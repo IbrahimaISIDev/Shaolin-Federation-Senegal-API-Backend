@@ -19,9 +19,9 @@ export const listClubsAdmin = async (filters: {
 
   if (search) {
     where.OR = [
-      { nom: { contains: search } },
-      { ville: { contains: search } },
-      { nomMaitre: { contains: search } },
+      { nom: { contains: search, mode: 'insensitive' } },
+      { ville: { contains: search, mode: 'insensitive' } },
+      { nomMaitre: { contains: search, mode: 'insensitive' } },
     ];
   }
 

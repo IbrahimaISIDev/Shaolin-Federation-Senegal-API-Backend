@@ -63,6 +63,24 @@ export const getMemberPayments = async (userId: number) => {
   });
 };
 
+export const getMemberInscriptions = async (userId: number) => {
+  const member = await prisma.member.findUnique({ where: { userId } });
+  if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
+
+  return prisma.inscription.findMany({
+    where: { memberId: member.id },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      competition: {
+        select: {
+          id: true, titre: true, lieu: true, dateDebut: true, dateFin: true,
+          region: { select: { nom: true, code: true } },
+        },
+      },
+    },
+  });
+};
+
 export const getActiveLicense = async (userId: number) => {
   const member = await prisma.member.findUnique({ where: { userId } });
   if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
