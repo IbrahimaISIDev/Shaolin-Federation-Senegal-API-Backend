@@ -13,15 +13,29 @@ import adminRouter from './routes/admin.routes';
 import actualitesRouter from './routes/actualites.routes';
 import uploadRouter from './routes/upload.routes';
 import competitionsRouter from './routes/competitions.routes';
+import contactRouter from './routes/contact.routes';
+import clubManagerRouter from './routes/club.manager.routes';
+import affiliationRouter from './routes/affiliation.routes';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // ─── Middlewares globaux ──────────────────────────────────────────────────────
 app.use(helmet());
+
+const allowedOrigins = (process.env.FRONTEND_URLS || process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-  credentials: true, // obligatoire pour les cookies httpOnly
+  origin: (origin, callback) => {
+    // Autoriser les requêtes sans origin (mobile, Postman, curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`Origine non autorisée : ${origin}`));
+  },
+  credentials: true,
 }));
 app.use(morgan('dev'));
 app.use(express.json());
@@ -33,9 +47,6 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 // Rate limiting strict sur l'auth
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
 
-app.use('/api/regions', regionsRouter);
-app.use('/api/clubs', clubsRouter);
-
 app.use('/api/auth', authRouter);
 app.use('/api/regions', regionsRouter);
 app.use('/api/clubs', clubsRouter);
@@ -45,6 +56,9 @@ app.use('/api/admin', adminRouter);
 app.use('/api/actualites', actualitesRouter);
 app.use('/api/competitions', competitionsRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/contact', contactRouter);
+app.use('/api/club', clubManagerRouter);
+app.use('/api/affiliations', affiliationRouter);
 
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
