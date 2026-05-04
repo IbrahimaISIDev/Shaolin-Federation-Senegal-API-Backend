@@ -16,6 +16,7 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.1.0",
+    "@types/nodemailer": "^8.0.0",
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
     "cloudinary": "^2.10.0",
@@ -27,6 +28,7 @@
     "jsonwebtoken": "^9.0.3",
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
+    "nodemailer": "^8.0.7",
     "puppeteer": "^24.42.0",
     "qrcode": "^1.5.4",
     "uuid": "^14.0.0"

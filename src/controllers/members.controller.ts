@@ -4,6 +4,7 @@ import {
   getMemberProfile,
   updateMemberProfile,
   getMemberPayments,
+  getMemberInscriptions,
   getActiveLicense,
 } from '../services/members.service';
 
@@ -43,6 +44,15 @@ export const getMyPayments = async (req: Request, res: Response): Promise<void> 
   try {
     const payments = await getMemberPayments(req.user!.userId);
     res.json({ data: payments });
+  } catch (err: any) {
+    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+  }
+};
+
+export const getMyInscriptions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const inscriptions = await getMemberInscriptions(req.user!.userId);
+    res.json({ data: inscriptions });
   } catch (err: any) {
     res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
   }
