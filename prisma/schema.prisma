@@ -253,7 +253,8 @@ enum AffiliationType {
 }
 
 enum AffiliationStatus {
-  PENDING
+  PENDING_PAYMENT  // soumis, attente paiement Wave
+  PENDING          // payé, attente validation admin
   APPROVED
   REJECTED
 }
@@ -261,7 +262,7 @@ enum AffiliationStatus {
 model AffiliationDemande {
   id          Int               @id @default(autoincrement())
   type        AffiliationType
-  status      AffiliationStatus @default(PENDING)
+  status      AffiliationStatus @default(PENDING_PAYMENT)
   code        String?           @unique @db.VarChar(20)
 
   // Personal info (all types)
@@ -283,6 +284,17 @@ model AffiliationDemande {
   // Type-specific data stored as JSON
   donneesSpecifiques Json?
 
+  // Payment
+  montant           Int               @default(0)
+  paymentProvider   PaymentProvider?
+  // Wave
+  waveCheckoutId    String?           @unique @db.VarChar(100)
+  waveCheckoutUrl   String?           @db.VarChar(500)
+  // Orange Money
+  omOrderId         String?           @unique @db.VarChar(200)
+  omPayToken        String?           @db.VarChar(500)
+  paidAt            DateTime?
+
   // Admin
   adminNote   String?           @db.Text
   motifRejet  String?           @db.Text
@@ -298,6 +310,8 @@ model AffiliationDemande {
 
   @@index([type, status])
   @@index([email])
+  @@index([waveCheckoutId])
+  @@index([omOrderId])
   @@map("affiliation_demandes")
 }
 
