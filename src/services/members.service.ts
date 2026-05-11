@@ -24,8 +24,8 @@ export const getMemberProfile = async (userId: number) => {
 };
 
 export const updateMemberProfile = async (userId: number, data: {
-  prenom?: string; nom?: string; phone?: string;
-  grade?: string; discipline?: string; photoUrl?: string;
+  prenom?: string; nom?: string; telephone?: string;
+  grade?: string; discipline?: string; photoUrl?: string; adresse?: string;
 }) => {
   const member = await prisma.member.findUnique({ where: { userId } });
   if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
@@ -39,11 +39,12 @@ export const updateMemberProfile = async (userId: number, data: {
         grade: data.grade,
         discipline: data.discipline,
         photoUrl: data.photoUrl,
+        adresse: data.adresse,
       },
     }),
-    ...(data.phone ? [prisma.user.update({
+    ...(data.telephone ? [prisma.user.update({
       where: { id: userId },
-      data: { phone: data.phone },
+      data: { phone: data.telephone },
     })] : []),
   ]);
 

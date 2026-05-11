@@ -1,5 +1,6 @@
 import { PrismaClient, AffiliationType, AffiliationStatus, Sexe } from '@prisma/client';
 import { sendAffiliationApprovedEmail, sendAffiliationRejectedEmail } from './email.service';
+import { generateLicense, activateLicense } from './licenses.service';
 
 const prisma = new PrismaClient();
 
@@ -298,7 +299,7 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
     const clubId = demande.clubId;
     if (!clubId) throw new Error('clubId requis pour MAITRE/MEMBRE');
 
-    await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         email: demande.email,
         phone: demande.telephone,
@@ -322,7 +323,14 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
           },
         },
       },
+      include: { member: { select: { id: true } } },
     });
+
+    // Créer et activer immédiatement la licence — le paiement est déjà confirmé
+    if (demande.type === 'MEMBRE' && newUser.member) {
+      const license = await generateLicense(newUser.member.id);
+      await activateLicense(license.id);
+    }
 
     sendAffiliationApprovedEmail(
       demande.email,

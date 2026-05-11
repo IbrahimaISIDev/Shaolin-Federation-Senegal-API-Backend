@@ -11,10 +11,11 @@ import {
 const UpdateProfileSchema = z.object({
   prenom: z.string().min(1).max(100).optional(),
   nom: z.string().min(1).max(100).optional(),
-  phone: z.string().max(20).optional(),
+  telephone: z.string().max(20).optional(),
   grade: z.string().max(50).optional(),
   discipline: z.string().max(100).optional(),
   photoUrl: z.string().url().optional(),
+  adresse: z.string().max(255).optional(),
 });
 
 export const getMe = async (req: Request, res: Response): Promise<void> => {
