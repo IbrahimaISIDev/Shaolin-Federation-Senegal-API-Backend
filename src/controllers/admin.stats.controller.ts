@@ -26,7 +26,7 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
             draftArticles,
             totalCompetitions,
             upcomingCompetitions,
-            membersByRegion,
+            _membersByRegion,
             membersByMonth,
         ] = await Promise.all([
             // Comptages globaux
@@ -56,10 +56,9 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
             prisma.competition.count(),
             prisma.competition.count({ where: { dateDebut: { gt: now }, isPublished: true } }),
 
-            // Membres par région
+            // Membres par région (placeholder — résultat ignoré, on utilise la raw query)
             prisma.club.groupBy({
                 by: ['regionId'],
-                _sum: { id: false as any },
                 _count: { id: true },
             }),
 
@@ -72,11 +71,6 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
         ORDER BY mois ASC
       `,
         ]);
-
-        // Enrichir la répartition par région avec les noms
-        const regions = await prisma.region.findMany({
-            select: { id: true, nom: true, code: true },
-        });
 
         const membersParRegion = await prisma.$queryRaw<
             Array<{ regionNom: string; regionCode: string; total: number }>
