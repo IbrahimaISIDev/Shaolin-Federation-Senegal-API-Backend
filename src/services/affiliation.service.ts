@@ -1,5 +1,5 @@
 import { PrismaClient, AffiliationType, AffiliationStatus, Sexe } from '@prisma/client';
-import { sendAffiliationReceivedEmail, sendAffiliationApprovedEmail, sendAffiliationRejectedEmail } from './email.service';
+import { sendAffiliationApprovedEmail, sendAffiliationRejectedEmail } from './email.service';
 
 const prisma = new PrismaClient();
 
@@ -60,6 +60,8 @@ export async function submitClubAffiliation(body: {
   const demande = await prisma.affiliationDemande.create({
     data: {
       type: 'CLUB',
+      status: 'PENDING_PAYMENT',
+      montant: MONTANTS.CLUB,
       prenom: body.prenom,
       nom: body.nom,
       email: body.email,
@@ -78,13 +80,11 @@ export async function submitClubAffiliation(body: {
         emailClub: body.emailClub,
         logoUrl: body.logoUrl,
         description: body.description,
-        montant: MONTANTS.CLUB,
       },
     },
   });
 
-  sendAffiliationReceivedEmail(body.email, `${body.prenom} ${body.nom}`, 'CLUB', demande.id).catch(() => {});
-
+  // L'email de confirmation est envoyé après confirmation du paiement Wave (webhook)
   return demande;
 }
 
@@ -111,6 +111,8 @@ export async function submitMaitreAffiliation(body: {
   const demande = await prisma.affiliationDemande.create({
     data: {
       type: 'MAITRE',
+      status: 'PENDING_PAYMENT',
+      montant: MONTANTS.MAITRE,
       prenom: body.prenom,
       nom: body.nom,
       email: body.email,
@@ -129,12 +131,9 @@ export async function submitMaitreAffiliation(body: {
         anneesPratique: body.anneesPratique,
         experience: body.experience,
         certificationsUrl: body.certificationsUrl,
-        montant: MONTANTS.MAITRE,
       },
     },
   });
-
-  sendAffiliationReceivedEmail(body.email, `${body.prenom} ${body.nom}`, 'MAITRE', demande.id).catch(() => {});
 
   return demande;
 }
@@ -163,6 +162,8 @@ export async function submitMembreAffiliation(body: {
   const demande = await prisma.affiliationDemande.create({
     data: {
       type: 'MEMBRE',
+      status: 'PENDING_PAYMENT',
+      montant: MONTANTS.MEMBRE,
       prenom: body.prenom,
       nom: body.nom,
       email: body.email,
@@ -182,12 +183,9 @@ export async function submitMembreAffiliation(body: {
         contactUrgenceNom: body.contactUrgenceNom,
         contactUrgencePhone: body.contactUrgencePhone,
         certificatMedicalUrl: body.certificatMedicalUrl,
-        montant: MONTANTS.MEMBRE,
       },
     },
   });
-
-  sendAffiliationReceivedEmail(body.email, `${body.prenom} ${body.nom}`, 'MEMBRE', demande.id).catch(() => {});
 
   return demande;
 }
@@ -300,7 +298,7 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
     const clubId = demande.clubId;
     if (!clubId) throw new Error('clubId requis pour MAITRE/MEMBRE');
 
-    const user = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: demande.email,
         phone: demande.telephone,
