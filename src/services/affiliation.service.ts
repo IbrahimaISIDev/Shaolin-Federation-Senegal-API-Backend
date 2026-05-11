@@ -327,7 +327,7 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
     });
 
     // Créer et activer immédiatement la licence — le paiement est déjà confirmé
-    if (demande.type === 'MEMBRE' && newUser.member) {
+    if (newUser.member) {
       const license = await generateLicense(newUser.member.id);
       await activateLicense(license.id);
     }
