@@ -26,7 +26,7 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
             draftArticles,
             totalCompetitions,
             upcomingCompetitions,
-            membersByRegion,
+            _membersByRegion,
             membersByMonth,
         ] = await Promise.all([
             // Comptages globaux
@@ -56,35 +56,29 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
             prisma.competition.count(),
             prisma.competition.count({ where: { dateDebut: { gt: now }, isPublished: true } }),
 
-            // Membres par région
+            // Membres par région (placeholder — résultat ignoré, on utilise la raw query)
             prisma.club.groupBy({
                 by: ['regionId'],
-                _sum: { id: false as any },
                 _count: { id: true },
             }),
 
             // Membres par mois (derniers 12 mois)
             prisma.$queryRaw<Array<{ mois: string; total: number }>>`
-        SELECT DATE_FORMAT(createdAt, '%Y-%m') as mois, COUNT(*) as total
+        SELECT TO_CHAR("createdAt", 'YYYY-MM') as mois, COUNT(*)::int as total
         FROM members
-        WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
-        GROUP BY DATE_FORMAT(createdAt, '%Y-%m')
+        WHERE "createdAt" >= NOW() - INTERVAL '12 months'
+        GROUP BY TO_CHAR("createdAt", 'YYYY-MM')
         ORDER BY mois ASC
       `,
         ]);
 
-        // Enrichir la répartition par région avec les noms
-        const regions = await prisma.region.findMany({
-            select: { id: true, nom: true, code: true },
-        });
-
         const membersParRegion = await prisma.$queryRaw<
             Array<{ regionNom: string; regionCode: string; total: number }>
         >`
-      SELECT r.nom as regionNom, r.code as regionCode, COUNT(m.id) as total
+      SELECT r.nom as "regionNom", r.code as "regionCode", COUNT(m.id)::int as total
       FROM members m
-      JOIN clubs c ON m.clubId = c.id
-      JOIN regions r ON c.regionId = r.id
+      JOIN clubs c ON m."clubId" = c.id
+      JOIN regions r ON c."regionId" = r.id
       GROUP BY r.id, r.nom, r.code
       ORDER BY total DESC
     `;

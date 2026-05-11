@@ -20,9 +20,9 @@ export const listMembersAdmin = async (filters: {
 
     if (search) {
         where.OR = [
-            { prenom: { contains: search } },
-            { nom: { contains: search } },
-            { user: { email: { contains: search } } },
+            { prenom: { contains: search, mode: 'insensitive' } },
+            { nom: { contains: search, mode: 'insensitive' } },
+            { user: { email: { contains: search, mode: 'insensitive' } } },
         ];
     }
 

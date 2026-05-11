@@ -29,8 +29,8 @@ export const listActualitesAdmin = async (filters: {
 
     if (search) {
         where.OR = [
-            { titre: { contains: search } },
-            { contenu: { contains: search } },
+            { titre: { contains: search, mode: 'insensitive' } },
+            { contenu: { contains: search, mode: 'insensitive' } },
         ];
     }
 

@@ -3,6 +3,7 @@
 // Gestion publique + admin des compétitions
 // ============================================================
 import { PrismaClient } from '@prisma/client';
+import { sendCompetitionRegistrationEmail } from './email.service';
 const prisma = new PrismaClient();
 
 // ── Public ─────────────────────────────────────────────────────────────────────
@@ -30,8 +31,8 @@ export const listCompetitionsPublic = async (filters: {
 
     if (search) {
         where.OR = [
-            { titre: { contains: search } },
-            { lieu: { contains: search } },
+            { titre: { contains: search, mode: 'insensitive' } },
+            { lieu: { contains: search, mode: 'insensitive' } },
         ];
     }
 
@@ -82,9 +83,24 @@ export const inscrireCompetition = async (memberId: number, competitionId: numbe
     });
     if (existing) throw { status: 409, message: 'Déjà inscrit à cette compétition', code: 'ALREADY_REGISTERED' };
 
-    return prisma.inscription.create({
+    const inscription = await prisma.inscription.create({
         data: { memberId, competitionId, categorie },
     });
+
+    // Email de confirmation (non-bloquant)
+    const member = await prisma.member.findUnique({
+        where: { id: memberId },
+        include: { user: { select: { email: true } } },
+    });
+    if (member?.user?.email) {
+        sendCompetitionRegistrationEmail(member.user.email, member.prenom, {
+            titre:     competition.titre,
+            dateDebut: competition.dateDebut,
+            lieu:      competition.lieu,
+        }).catch(() => {});
+    }
+
+    return inscription;
 };
 
 // ── Admin ──────────────────────────────────────────────────────────────────────
@@ -100,8 +116,8 @@ export const listCompetitionsAdmin = async (filters: {
 
     if (search) {
         where.OR = [
-            { titre: { contains: search } },
-            { lieu: { contains: search } },
+            { titre: { contains: search, mode: 'insensitive' } },
+            { lieu: { contains: search, mode: 'insensitive' } },
         ];
     }
 

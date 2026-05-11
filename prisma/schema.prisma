@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Region {
@@ -14,8 +15,9 @@ model Region {
   latitude  Float?
   longitude Float?
   createdAt DateTime @default(now())
-  clubs        Club[]
-  competitions Competition[]
+  clubs               Club[]
+  competitions        Competition[]
+  affiliationDemandes AffiliationDemande[]
   @@map("regions")
 }
 
@@ -25,11 +27,14 @@ model User {
   phone     String?  @db.VarChar(20)
   password  String   @db.VarChar(255)
   role      UserRole @default(MEMBER)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  member        Member?
-  refreshTokens RefreshToken[]
+  isActive             Boolean   @default(true)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  passwordResetToken   String?   @unique @db.VarChar(255)
+  passwordResetExpires DateTime?
+  member               Member?
+  refreshTokens        RefreshToken[]
+  affiliationsApprouvees AffiliationDemande[] @relation("AffiliationApprovals")
   @@index([email])
   @@map("users")
 }
@@ -54,6 +59,7 @@ model RefreshToken {
 model Club {
   id          Int      @id @default(autoincrement())
   nom         String   @db.VarChar(150)
+  code        String?  @unique @db.VarChar(20)
   regionId    Int
   ville       String?  @db.VarChar(100)
   latitude    Float?
@@ -66,27 +72,33 @@ model Club {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  region  Region   @relation(fields: [regionId], references: [id])
-  members Member[]
+  region              Region               @relation(fields: [regionId], references: [id])
+  members             Member[]
+  affiliationDemandes AffiliationDemande[]
   @@index([regionId])
   @@map("clubs")
 }
 
 model Member {
-  id            Int       @id @default(autoincrement())
-  userId        Int       @unique
-  clubId        Int
-  prenom        String    @db.VarChar(100)
-  nom           String    @db.VarChar(100)
-  dateNaissance DateTime?
-  sexe          Sexe?
-  grade         String?   @db.VarChar(50)
-  discipline    String?   @db.VarChar(100)
-  photoUrl      String?   @db.VarChar(500)
-  latitude      Float?
-  longitude     Float?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                  Int       @id @default(autoincrement())
+  userId              Int       @unique
+  clubId              Int
+  prenom              String    @db.VarChar(100)
+  nom                 String    @db.VarChar(100)
+  dateNaissance       DateTime?
+  sexe                Sexe?
+  grade               String?   @db.VarChar(50)
+  discipline          String?   @db.VarChar(100)
+  photoUrl            String?   @db.VarChar(500)
+  adresse             String?   @db.VarChar(255)
+  nationalite         String?   @db.VarChar(100)
+  groupeSanguin       String?   @db.VarChar(10)
+  contactUrgenceNom   String?   @db.VarChar(150)
+  contactUrgencePhone String?   @db.VarChar(20)
+  latitude            Float?
+  longitude           Float?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   club         Club          @relation(fields: [clubId], references: [id])
   licenses     License[]
@@ -208,7 +220,7 @@ model Actualite {
   id          Int       @id @default(autoincrement())
   titre       String    @db.VarChar(255)
   slug        String    @unique @db.VarChar(255)
-  contenu     String    @db.LongText
+  contenu     String    @db.Text
   imageUrl    String?   @db.VarChar(500)
   isPublished Boolean   @default(false)
   publishedAt DateTime?
@@ -217,5 +229,89 @@ model Actualite {
   @@index([slug])
   @@index([isPublished, publishedAt])
   @@map("actualites")
+}
+
+model ContactMessage {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(150)
+  email     String   @db.VarChar(255)
+  phone     String?  @db.VarChar(30)
+  subject   String   @db.VarChar(100)
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("contact_messages")
+}
+
+// ─── Affiliation System ───────────────────────────────────────────────────────
+
+enum AffiliationType {
+  CLUB
+  MAITRE
+  MEMBRE
+}
+
+enum AffiliationStatus {
+  PENDING_PAYMENT  // soumis, attente paiement Wave
+  PENDING          // payé, attente validation admin
+  APPROVED
+  REJECTED
+}
+
+model AffiliationDemande {
+  id          Int               @id @default(autoincrement())
+  type        AffiliationType
+  status      AffiliationStatus @default(PENDING_PAYMENT)
+  code        String?           @unique @db.VarChar(20)
+
+  // Personal info (all types)
+  prenom      String            @db.VarChar(100)
+  nom         String            @db.VarChar(100)
+  email       String            @db.VarChar(255)
+  telephone   String            @db.VarChar(20)
+  dateNaissance DateTime?
+  sexe        Sexe?
+  adresse     String?           @db.VarChar(255)
+  ville       String?           @db.VarChar(100)
+  regionId    Int?
+  nationalite String?           @db.VarChar(100)
+  photoUrl    String?           @db.VarChar(500)
+
+  // For MEMBRE and MAITRE: existing club affiliation
+  clubId      Int?
+
+  // Type-specific data stored as JSON
+  donneesSpecifiques Json?
+
+  // Payment
+  montant           Int               @default(0)
+  paymentProvider   PaymentProvider?
+  // Wave
+  waveCheckoutId    String?           @unique @db.VarChar(100)
+  waveCheckoutUrl   String?           @db.VarChar(500)
+  // Orange Money
+  omOrderId         String?           @unique @db.VarChar(200)
+  omPayToken        String?           @db.VarChar(500)
+  paidAt            DateTime?
+
+  // Admin
+  adminNote   String?           @db.Text
+  motifRejet  String?           @db.Text
+  approvedById Int?
+  approvedAt  DateTime?
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  region     Region? @relation(fields: [regionId], references: [id])
+  club       Club?   @relation(fields: [clubId], references: [id])
+  approvedBy User?   @relation("AffiliationApprovals", fields: [approvedById], references: [id])
+
+  @@index([type, status])
+  @@index([email])
+  @@index([waveCheckoutId])
+  @@index([omOrderId])
+  @@map("affiliation_demandes")
 }
 

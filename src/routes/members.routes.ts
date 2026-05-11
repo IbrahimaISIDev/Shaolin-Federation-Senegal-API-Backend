@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware';
-import { getMe, updateMe, getMyPayments, getMyLicense } from '../controllers/members.controller';
+import { getMe, updateMe, getMyPayments, getMyLicense, getMyInscriptions } from '../controllers/members.controller';
 
 const router = Router();
 
@@ -18,5 +18,8 @@ router.get('/me/license', getMyLicense);
 
 // GET  /api/members/me/payments
 router.get('/me/payments', getMyPayments);
+
+// GET  /api/members/me/inscriptions
+router.get('/me/inscriptions', getMyInscriptions);
 
 export default router;

@@ -4,16 +4,18 @@ import {
   getMemberProfile,
   updateMemberProfile,
   getMemberPayments,
+  getMemberInscriptions,
   getActiveLicense,
 } from '../services/members.service';
 
 const UpdateProfileSchema = z.object({
   prenom: z.string().min(1).max(100).optional(),
   nom: z.string().min(1).max(100).optional(),
-  phone: z.string().max(20).optional(),
+  telephone: z.string().max(20).optional(),
   grade: z.string().max(50).optional(),
   discipline: z.string().max(100).optional(),
   photoUrl: z.string().url().optional(),
+  adresse: z.string().max(255).optional(),
 });
 
 export const getMe = async (req: Request, res: Response): Promise<void> => {
@@ -43,6 +45,15 @@ export const getMyPayments = async (req: Request, res: Response): Promise<void> 
   try {
     const payments = await getMemberPayments(req.user!.userId);
     res.json({ data: payments });
+  } catch (err: any) {
+    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+  }
+};
+
+export const getMyInscriptions = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const inscriptions = await getMemberInscriptions(req.user!.userId);
+    res.json({ data: inscriptions });
   } catch (err: any) {
     res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
   }

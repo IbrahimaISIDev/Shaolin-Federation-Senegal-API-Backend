@@ -20,9 +20,9 @@ export const getClubs = async ({ regionCode, search, page = 1, limit = 20 }: Clu
 
   if (search) {
     where.OR = [
-      { nom: { contains: search } },
-      { ville: { contains: search } },
-      { nomMaitre: { contains: search } },
+      { nom: { contains: search, mode: 'insensitive' } },
+      { ville: { contains: search, mode: 'insensitive' } },
+      { nomMaitre: { contains: search, mode: 'insensitive' } },
     ];
   }
 
@@ -88,9 +88,9 @@ export const searchClubs = async (q: string) => {
     where: {
       isActive: true,
       OR: [
-        { nom: { contains: q } },
-        { ville: { contains: q } },
-        { nomMaitre: { contains: q } },
+        { nom: { contains: q, mode: 'insensitive' } },
+        { ville: { contains: q, mode: 'insensitive' } },
+        { nomMaitre: { contains: q, mode: 'insensitive' } },
       ],
     },
     take: 10,

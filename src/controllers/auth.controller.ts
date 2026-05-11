@@ -5,6 +5,9 @@ import {
   loginService,
   refreshService,
   logoutService,
+  changePasswordService,
+  forgotPasswordService,
+  resetPasswordService,
 } from '../services/auth.service';
 
 // ─── Schémas de validation Zod ───────────────────────────────────────────────
@@ -132,4 +135,56 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 
 export const me = async (req: Request, res: Response): Promise<void> => {
   res.json({ data: req.user });
+};
+
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Mot de passe actuel requis'),
+  newPassword: z.string().min(8, 'Minimum 8 caractères'),
+});
+
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    await forgotPasswordService(email);
+    // Toujours 200 pour ne pas révéler si l'email existe
+    res.json({ message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(422).json({ error: 'Email invalide', code: 'VALIDATION_ERROR' });
+      return;
+    }
+    res.status(200).json({ message: 'Si cet email existe, un lien de réinitialisation a été envoyé.' });
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { token, password } = z.object({
+      token:    z.string().min(1),
+      password: z.string().min(8, 'Minimum 8 caractères'),
+    }).parse(req.body);
+    await resetPasswordService(token, password);
+    res.json({ message: 'Mot de passe réinitialisé avec succès. Veuillez vous connecter.' });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
+      return;
+    }
+    res.status(err.status || 500).json({ error: err.message || 'Erreur serveur', code: err.code || 'SERVER_ERROR' });
+  }
+};
+
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const data = ChangePasswordSchema.parse(req.body);
+    await changePasswordService(req.user!.userId, data.currentPassword, data.newPassword);
+    res.clearCookie('refresh_token');
+    res.json({ message: 'Mot de passe mis à jour. Veuillez vous reconnecter.' });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
+      return;
+    }
+    res.status(err.status || 500).json({ error: err.message || 'Erreur serveur', code: err.code || 'SERVER_ERROR' });
+  }
 };

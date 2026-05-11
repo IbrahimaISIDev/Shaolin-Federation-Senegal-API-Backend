@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
+import { sendWelcomeEmail, sendPasswordResetEmail } from './email.service';
 
 const prisma = new PrismaClient();
 
@@ -80,6 +82,9 @@ export const registerService = async (input: RegisterInput) => {
 
     return { user, member };
   });
+
+  // Email de bienvenue (non-bloquant)
+  sendWelcomeEmail(result.user.email, result.member.prenom).catch(() => {});
 
   return {
     id: result.user.id,
@@ -192,4 +197,73 @@ export const refreshService = async (token: string) => {
 
 export const logoutService = async (token: string) => {
   await prisma.refreshToken.deleteMany({ where: { token } });
+};
+
+// ─── Mot de passe oublié ─────────────────────────────────────────────────────
+
+export const forgotPasswordService = async (email: string) => {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: { member: true },
+  });
+  // Toujours répondre OK pour ne pas révéler si l'email existe
+  if (!user) return;
+
+  const token   = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 60 * 60 * 1000); // +1 heure
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { passwordResetToken: token, passwordResetExpires: expires },
+  });
+
+  const prenom = user.member?.prenom ?? 'Membre';
+  await sendPasswordResetEmail(user.email, prenom, token);
+};
+
+export const resetPasswordService = async (token: string, newPassword: string) => {
+  const user = await prisma.user.findFirst({
+    where: {
+      passwordResetToken:   token,
+      passwordResetExpires: { gt: new Date() },
+    },
+  });
+
+  if (!user) {
+    throw { status: 400, message: 'Lien invalide ou expiré', code: 'INVALID_RESET_TOKEN' };
+  }
+
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      password:             hashedPassword,
+      passwordResetToken:   null,
+      passwordResetExpires: null,
+    },
+  });
+
+  // Révoquer toutes les sessions
+  await prisma.refreshToken.deleteMany({ where: { userId: user.id } });
+};
+
+// ─── Changement de mot de passe ───────────────────────────────────────────────
+
+export const changePasswordService = async (
+  userId: number,
+  currentPassword: string,
+  newPassword: string
+) => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw { status: 404, message: 'Utilisateur introuvable', code: 'USER_NOT_FOUND' };
+
+  const isValid = await bcrypt.compare(currentPassword, user.password);
+  if (!isValid) throw { status: 401, message: 'Mot de passe actuel incorrect', code: 'INVALID_PASSWORD' };
+
+  const hashedPassword = await bcrypt.hash(newPassword, 12);
+  await prisma.user.update({ where: { id: userId }, data: { password: hashedPassword } });
+
+  // Révoquer tous les refresh tokens (forcer re-connexion sur les autres appareils)
+  await prisma.refreshToken.deleteMany({ where: { userId } });
 };
