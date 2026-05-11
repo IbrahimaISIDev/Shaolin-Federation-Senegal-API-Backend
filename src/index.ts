@@ -16,6 +16,7 @@ import competitionsRouter from './routes/competitions.routes';
 import contactRouter from './routes/contact.routes';
 import clubManagerRouter from './routes/club.manager.routes';
 import affiliationRouter from './routes/affiliation.routes';
+import paymentRouter from './routes/payment.routes';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -59,6 +60,7 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/club', clubManagerRouter);
 app.use('/api/affiliations', affiliationRouter);
+app.use('/api/payments', paymentRouter);
 
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
