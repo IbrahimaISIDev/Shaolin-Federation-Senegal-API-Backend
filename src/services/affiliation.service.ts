@@ -1,6 +1,7 @@
 import { PrismaClient, AffiliationType, AffiliationStatus, Sexe } from '@prisma/client';
 import { sendAffiliationApprovedEmail, sendAffiliationRejectedEmail } from './email.service';
 import { generateLicense, activateLicense } from './licenses.service';
+import { generateLicensePDF } from './pdf.service';
 
 const prisma = new PrismaClient();
 
@@ -330,6 +331,8 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
     if (newUser.member) {
       const license = await generateLicense(newUser.member.id);
       await activateLicense(license.id);
+      // Génération du PDF en arrière-plan — l'approbation ne doit pas échouer si Puppeteer est lent
+      generateLicensePDF(license.id, newUser.id).catch(() => {});
     }
 
     sendAffiliationApprovedEmail(
