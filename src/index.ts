@@ -19,6 +19,8 @@ import affiliationRouter from './routes/affiliation.routes';
 import paymentRouter from './routes/payment.routes';
 
 const app = express();
+// Derrière le reverse proxy Caddy : faire confiance au 1er proxy
+app.set('trust proxy', 1);
 const PORT = process.env.PORT || 4000;
 
 // ─── Middlewares globaux ──────────────────────────────────────────────────────
