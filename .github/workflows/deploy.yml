@@ -16,9 +16,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd ~/shaolin-backend
+            cd ~/shaolin/backend
             git pull origin main
-            npm install --production=false
-            npm run build
-            npx prisma migrate deploy
-            pm2 restart backend --update-env
+            cd ~/shaolin
+            docker compose up -d --build backend
