@@ -9,10 +9,11 @@ export const listMembersAdmin = async (filters: {
     search?: string;
     clubId?: number;
     status?: 'PENDING' | 'ACTIVE' | 'EXPIRED' | 'SUSPENDED';
+    annee?: number;
     page?: number;
     limit?: number;
 }) => {
-    const { search, clubId, status, page = 1, limit = 20 } = filters;
+    const { search, clubId, status, annee, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
     const where: any = {};
 
@@ -26,10 +27,13 @@ export const listMembersAdmin = async (filters: {
         ];
     }
 
-    // Filtre par statut de licence
-    if (status) {
+    // Filtre par statut et/ou saison (année) de licence
+    if (status || annee) {
         where.licenses = {
-            some: { status },
+            some: {
+                ...(status ? { status } : {}),
+                ...(annee ? { annee } : {}),
+            },
         };
     }
 

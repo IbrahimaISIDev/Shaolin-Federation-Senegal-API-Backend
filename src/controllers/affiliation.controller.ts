@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as affiliationService from '../services/affiliation.service';
+import { generateListPDF } from '../services/pdf.service';
 
 export const submitClub = async (req: Request, res: Response) => {
   try {
@@ -43,6 +44,51 @@ export const listAffiliations = async (req: Request, res: Response) => {
       limit: limit ? parseInt(limit) : undefined,
     });
     res.json({ success: true, ...result });
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const exportAffiliationsPdf = async (req: Request, res: Response) => {
+  try {
+    const type = req.query.type as string | undefined;
+    const status = req.query.status as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const { data } = await affiliationService.listAffiliations({
+      type: type as any,
+      status: status as any,
+      search,
+      page: 1,
+      limit: 1000,
+    });
+
+    const labels: Record<string, string> = { CLUB: 'Club', MAITRE: 'Maître', MEMBRE: 'Membre' };
+    const rows = data.map((d: any) => ({
+      nom: `${d.prenom} ${d.nom}`,
+      type: labels[d.type] ?? d.type,
+      email: d.email,
+      telephone: d.telephone,
+      statut: d.status,
+      date: new Date(d.createdAt).toLocaleDateString('fr-FR'),
+    }));
+
+    const pdfBuffer = await generateListPDF(
+      "Liste des demandes d'affiliation",
+      [
+        { key: 'nom', label: 'Nom' },
+        { key: 'type', label: 'Type' },
+        { key: 'email', label: 'Email' },
+        { key: 'telephone', label: 'Téléphone' },
+        { key: 'statut', label: 'Statut' },
+        { key: 'date', label: 'Date' },
+      ],
+      rows
+    );
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename="affiliations.pdf"');
+    res.send(pdfBuffer);
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

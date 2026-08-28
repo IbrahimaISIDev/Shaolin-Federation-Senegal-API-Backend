@@ -365,3 +365,77 @@ export const generateLicensePDF = async (licenseId: number, userId: number): Pro
     await browser.close();
   }
 };
+
+// ─── Export PDF générique d'une liste (tableau) ──────────────────────────────
+const buildListHTML = (
+  title: string,
+  columns: { key: string; label: string }[],
+  rows: Record<string, any>[]
+) => `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; padding: 32px; color: #1A2B4A; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid #E67E22; padding-bottom: 12px; margin-bottom: 20px; }
+    .header h1 { font-size: 18px; color: #0A1628; }
+    .header .meta { font-size: 11px; color: #64748B; text-align: right; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th { background: #0A1628; color: #fff; text-align: left; padding: 8px 10px; }
+    td { padding: 7px 10px; border-bottom: 1px solid #E2E8F0; }
+    tr:nth-child(even) td { background: #F8FAFC; }
+    .footer { margin-top: 16px; font-size: 10px; color: #94A3B8; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>ADSS Sénégal — ${title}</h1>
+    <div class="meta">
+      Généré le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}<br/>
+      ${rows.length} résultat${rows.length > 1 ? 's' : ''}
+    </div>
+  </div>
+  <table>
+    <thead><tr>${columns.map((c) => `<th>${c.label}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${rows
+        .map(
+          (row) =>
+            `<tr>${columns.map((c) => `<td>${row[c.key] ?? '—'}</td>`).join('')}</tr>`
+        )
+        .join('')}
+    </tbody>
+  </table>
+  <div class="footer">Association Disciples Shaolin Si Sénégal — shaolin-senegal.com</div>
+</body>
+</html>
+`;
+
+export const generateListPDF = async (
+  title: string,
+  columns: { key: string; label: string }[],
+  rows: Record<string, any>[]
+): Promise<Buffer> => {
+  const html = buildListHTML(title, columns, rows);
+
+  const browser = await puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'networkidle0' });
+    const pdfBuffer = await page.pdf({
+      format: 'A4',
+      landscape: true,
+      printBackground: true,
+      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
+    });
+    return Buffer.from(pdfBuffer);
+  } finally {
+    await browser.close();
+  }
+};

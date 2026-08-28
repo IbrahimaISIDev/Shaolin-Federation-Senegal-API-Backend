@@ -83,6 +83,20 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
       ORDER BY total DESC
     `;
 
+        const membresParGrade = await prisma.$queryRaw<Array<{ grade: string; total: number }>>`
+      SELECT COALESCE(grade, 'Non renseigné') as grade, COUNT(*)::int as total
+      FROM members
+      GROUP BY grade
+      ORDER BY total DESC
+    `;
+
+        const membresParDiscipline = await prisma.$queryRaw<Array<{ discipline: string; total: number }>>`
+      SELECT COALESCE(discipline, 'Non renseignée') as discipline, COUNT(*)::int as total
+      FROM members
+      GROUP BY discipline
+      ORDER BY total DESC
+    `;
+
         res.json({
             data: {
                 // Membres
@@ -110,6 +124,8 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
                 // Graphiques
                 membresParRegion: membersParRegion,
                 membresMoisParMois: membersByMonth,
+                membresParGrade,
+                membresParDiscipline,
             },
         });
     } catch (err: any) {

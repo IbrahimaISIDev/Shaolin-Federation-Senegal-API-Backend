@@ -5,6 +5,7 @@ import {
   submitMaitre,
   submitMembre,
   listAffiliations,
+  exportAffiliationsPdf,
   getAffiliation,
   approve,
   reject,
@@ -19,6 +20,7 @@ router.post('/membre', submitMembre);
 
 // Admin — list, detail, approve, reject
 router.get('/', requireAuth, requireRole('ADMIN'), listAffiliations);
+router.get('/export/pdf', requireAuth, requireRole('ADMIN'), exportAffiliationsPdf);
 router.get('/:id', requireAuth, requireRole('ADMIN'), getAffiliation);
 router.patch('/:id/approve', requireAuth, requireRole('ADMIN'), approve);
 router.patch('/:id/reject', requireAuth, requireRole('ADMIN'), reject);

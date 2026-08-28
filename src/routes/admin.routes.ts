@@ -10,6 +10,7 @@ import {
     validate,
     suspend,
     gradeHistory,
+    exportMembersPdf,
 } from '../controllers/admin.members.controller';
 
 // Admin — Clubs
@@ -55,8 +56,10 @@ router.use(requireAuth, requireRole('ADMIN'));
 router.get('/stats', stats);
 
 // ── Membres ──────────────────────────────────────────────────────────────────
-// GET  /api/admin/members?search=&club=&status=&page=&limit=
+// GET  /api/admin/members?search=&club=&status=&annee=&page=&limit=
 router.get('/members', listMembers);
+// GET  /api/admin/members/export/pdf?search=&club=&status=&annee=
+router.get('/members/export/pdf', exportMembersPdf);
 // GET  /api/admin/members/:id
 router.get('/members/:id', getMember);
 // PUT  /api/admin/members/:id
