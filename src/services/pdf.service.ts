@@ -211,7 +211,7 @@ const buildLicenseHTML = (data: {
   <div class="card">
     <div class="header">
       <div class="header-title">
-        <div class="federation-name">Fédération Shaolin Sénégal</div>
+        <div class="federation-name">Association Disciples Shaolin Si Sénégal</div>
         <div class="federation-sub">Licence officielle de membre</div>
       </div>
       <div class="year-badge">${data.annee}</div>

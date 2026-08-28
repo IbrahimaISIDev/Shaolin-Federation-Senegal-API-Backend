@@ -188,7 +188,7 @@ export const sendLicenseExpiringEmail = async (
       <div style="background:${urgent ? '#fff1f2' : '#fef9ee'};border-left:4px solid ${urgent ? '#ef4444' : '#f59e0b'};padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
         <p style="margin:0;color:${urgent ? '#991b1b' : '#78350f'};font-size:14px">
           ${urgent
-            ? "Pensez à renouveler rapidement votre licence pour continuer à participer aux compétitions et activités de la fédération."
+            ? "Pensez à renouveler rapidement votre licence pour continuer à participer aux compétitions et activités de l'association."
             : "Vous pouvez dès maintenant préparer le renouvellement de votre licence auprès de votre club."}
         </p>
       </div>
