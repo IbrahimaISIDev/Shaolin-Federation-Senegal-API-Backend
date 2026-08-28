@@ -14,7 +14,7 @@ const TYPE_PREFIX: Record<AffiliationType, string> = {
 const MONTANTS: Record<AffiliationType, number> = {
   CLUB: 5000,
   MAITRE: 10000,
-  MEMBRE: 5000,
+  MEMBRE: 5300,
 };
 
 async function generateCode(type: AffiliationType): Promise<string> {
