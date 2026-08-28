@@ -122,6 +122,8 @@ model License {
   dateFin   DateTime?
   pdfUrl    String?       @db.VarChar(500)
   annee     Int
+  notifiedJ30 DateTime?
+  notifiedJ7  DateTime?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
   member   Member    @relation(fields: [memberId], references: [id])

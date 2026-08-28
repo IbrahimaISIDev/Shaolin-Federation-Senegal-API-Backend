@@ -17,6 +17,7 @@ import contactRouter from './routes/contact.routes';
 import clubManagerRouter from './routes/club.manager.routes';
 import affiliationRouter from './routes/affiliation.routes';
 import paymentRouter from './routes/payment.routes';
+import { startLicenseExpiryJob } from './jobs/license-expiry.job';
 
 const app = express();
 // Derrière le reverse proxy Caddy : faire confiance au 1er proxy
@@ -83,6 +84,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 app.listen(PORT, () => {
   console.log(`🥋 API Shaolin démarrée sur http://localhost:${PORT}`);
   console.log(`   ENV: ${process.env.NODE_ENV || 'development'}`);
+  startLicenseExpiryJob();
 });
 
 

@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
+import { sendLicenseExpiringEmail } from './email.service';
 
 const prisma = new PrismaClient();
 
@@ -154,4 +155,49 @@ export const expireOldLicenses = async () => {
   });
   console.log(`⏰ CRON: ${result.count} licence(s) expirée(s)`);
   return result.count;
+};
+
+// ─── CRON : relancer les licences qui expirent bientôt (J-30 et J-7) ─────────
+const sendExpiryReminders = async (windowDays: number, field: 'notifiedJ30' | 'notifiedJ7') => {
+  const now = new Date();
+  const limit = new Date(now.getTime() + windowDays * 24 * 60 * 60 * 1000);
+
+  const licenses = await prisma.license.findMany({
+    where: {
+      status: 'ACTIVE',
+      dateFin: { gte: now, lte: limit },
+      [field]: null,
+    },
+    include: {
+      member: { include: { user: { select: { email: true } } } },
+    },
+  });
+
+  for (const license of licenses) {
+    if (!license.dateFin) continue;
+    const joursRestants = Math.max(
+      1,
+      Math.ceil((license.dateFin.getTime() - now.getTime()) / (24 * 60 * 60 * 1000))
+    );
+    try {
+      await sendLicenseExpiringEmail(
+        license.member.user.email,
+        license.member.prenom,
+        license.dateFin,
+        joursRestants
+      );
+      await prisma.license.update({ where: { id: license.id }, data: { [field]: now } });
+    } catch (err) {
+      console.error(`⚠️ Échec envoi rappel licence ${license.id}:`, err);
+    }
+  }
+
+  return licenses.length;
+};
+
+export const notifyExpiringLicenses = async () => {
+  const countJ30 = await sendExpiryReminders(30, 'notifiedJ30');
+  const countJ7 = await sendExpiryReminders(7, 'notifiedJ7');
+  console.log(`📧 CRON: ${countJ30} rappel(s) J-30, ${countJ7} rappel(s) J-7 envoyés`);
+  return { countJ30, countJ7 };
 };

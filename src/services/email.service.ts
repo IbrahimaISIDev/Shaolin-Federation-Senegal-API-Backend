@@ -169,6 +169,39 @@ export const sendAffiliationRejectedEmail = async (
     await transporter.sendMail({ from: FROM, to, subject: 'Décision sur votre demande d\'affiliation ADSS', html: wrap(body) });
 };
 
+// ─── 7bis. Licence bientôt expirée ────────────────────────────────────────────
+export const sendLicenseExpiringEmail = async (
+    to: string,
+    prenom: string,
+    dateFin: Date,
+    joursRestants: number
+) => {
+    const dateStr = new Date(dateFin).toLocaleDateString('fr-FR', {
+        day: 'numeric', month: 'long', year: 'numeric',
+    });
+    const urgent = joursRestants <= 7;
+
+    const body = `
+      <h2 style="color:#0f172a;margin-top:0">Votre licence expire bientôt ⏰</h2>
+      <p style="color:#475569">Bonjour ${prenom},</p>
+      <p style="color:#475569">Votre licence ADSS Sénégal arrive à expiration dans <strong>${joursRestants} jour${joursRestants > 1 ? 's' : ''}</strong>, le <strong>${dateStr}</strong>.</p>
+      <div style="background:${urgent ? '#fff1f2' : '#fef9ee'};border-left:4px solid ${urgent ? '#ef4444' : '#f59e0b'};padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
+        <p style="margin:0;color:${urgent ? '#991b1b' : '#78350f'};font-size:14px">
+          ${urgent
+            ? "Pensez à renouveler rapidement votre licence pour continuer à participer aux compétitions et activités de la fédération."
+            : "Vous pouvez dès maintenant préparer le renouvellement de votre licence auprès de votre club."}
+        </p>
+      </div>
+      ${btn('Voir ma licence', `${SITE_URL}/membre/licence`)}`;
+
+    await transporter.sendMail({
+        from: FROM,
+        to,
+        subject: urgent ? `⚠️ Votre licence expire dans ${joursRestants} jours` : 'Votre licence expire bientôt',
+        html: wrap(body),
+    });
+};
+
 // ─── 7. Notification admin — nouveau message de contact ──────────────────────
 export const sendContactNotificationEmail = async (contact: {
     name: string;
