@@ -10,6 +10,7 @@ import {
     deleteMemberAdmin,
     validateMember,
     suspendMember,
+    getGradeHistoryAdmin,
 } from '../services/admin.members.service';
 
 const UpdateMemberSchema = z.object({
@@ -51,13 +52,22 @@ export const getMember = async (req: Request, res: Response): Promise<void> => {
 export const updateMember = async (req: Request, res: Response): Promise<void> => {
     try {
         const data = UpdateMemberSchema.parse(req.body);
-        const member = await updateMemberAdmin(parseInt(req.params.id as string), data);
+        const member = await updateMemberAdmin(parseInt(req.params.id as string), data, req.user!.userId);
         res.json({ data: member, message: 'Membre mis à jour' });
     } catch (err: any) {
         if (err.name === 'ZodError') {
             res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
             return;
         }
+        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    }
+};
+
+export const gradeHistory = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const history = await getGradeHistoryAdmin(parseInt(req.params.id as string));
+        res.json({ data: history });
+    } catch (err: any) {
         res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
     }
 };

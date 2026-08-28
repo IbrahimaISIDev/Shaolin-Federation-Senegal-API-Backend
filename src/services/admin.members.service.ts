@@ -86,7 +86,8 @@ export const updateMemberAdmin = async (
         clubId?: number;
         dateNaissance?: Date;
         sexe?: 'M' | 'F';
-    }
+    },
+    changedById?: number
 ) => {
     const member = await prisma.member.findUnique({ where: { id } });
     if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
@@ -96,13 +97,42 @@ export const updateMemberAdmin = async (
         if (!club) throw { status: 404, message: 'Club introuvable', code: 'NOT_FOUND' };
     }
 
-    return prisma.member.update({
-        where: { id },
-        data,
-        include: {
-            user: { select: { email: true, phone: true, role: true, isActive: true } },
-            club: { select: { id: true, nom: true } },
-        },
+    const gradeChanged = data.grade !== undefined && data.grade !== member.grade;
+
+    const [updated] = await prisma.$transaction([
+        prisma.member.update({
+            where: { id },
+            data,
+            include: {
+                user: { select: { email: true, phone: true, role: true, isActive: true } },
+                club: { select: { id: true, nom: true } },
+            },
+        }),
+        ...(gradeChanged
+            ? [
+                  prisma.gradeHistory.create({
+                      data: {
+                          memberId: id,
+                          ancienGrade: member.grade,
+                          nouveauGrade: data.grade!,
+                          changedById,
+                      },
+                  }),
+              ]
+            : []),
+    ]);
+
+    return updated;
+};
+
+export const getGradeHistoryAdmin = async (memberId: number) => {
+    const member = await prisma.member.findUnique({ where: { id: memberId } });
+    if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
+
+    return prisma.gradeHistory.findMany({
+        where: { memberId },
+        orderBy: { createdAt: 'desc' },
+        include: { changedBy: { select: { email: true } } },
     });
 };
 

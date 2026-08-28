@@ -9,6 +9,7 @@ import {
     deleteMember,
     validate,
     suspend,
+    gradeHistory,
 } from '../controllers/admin.members.controller';
 
 // Admin — Clubs
@@ -66,6 +67,8 @@ router.delete('/members/:id', deleteMember);
 router.patch('/members/:id/validate', validate);
 // PATCH /api/admin/members/:id/suspend
 router.patch('/members/:id/suspend', suspend);
+// GET  /api/admin/members/:id/grade-history
+router.get('/members/:id/grade-history', gradeHistory);
 
 // ── Clubs ────────────────────────────────────────────────────────────────────
 // GET  /api/admin/clubs

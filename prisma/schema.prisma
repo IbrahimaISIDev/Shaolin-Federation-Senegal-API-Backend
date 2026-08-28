@@ -9,32 +9,35 @@ datasource db {
 }
 
 model Region {
-  id        Int      @id @default(autoincrement())
-  nom       String   @db.VarChar(100)
-  code      String   @unique @db.VarChar(10)
-  latitude  Float?
-  longitude Float?
-  createdAt DateTime @default(now())
+  id                  Int                  @id @default(autoincrement())
+  nom                 String               @db.VarChar(100)
+  code                String               @unique @db.VarChar(10)
+  latitude            Float?
+  longitude           Float?
+  createdAt           DateTime             @default(now())
   clubs               Club[]
   competitions        Competition[]
   affiliationDemandes AffiliationDemande[]
+
   @@map("regions")
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique @db.VarChar(255)
-  phone     String?  @db.VarChar(20)
-  password  String   @db.VarChar(255)
-  role      UserRole @default(MEMBER)
-  isActive             Boolean   @default(true)
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  passwordResetToken   String?   @unique @db.VarChar(255)
-  passwordResetExpires DateTime?
-  member               Member?
-  refreshTokens        RefreshToken[]
+  id                     Int                  @id @default(autoincrement())
+  email                  String               @unique @db.VarChar(255)
+  phone                  String?              @db.VarChar(20)
+  password               String               @db.VarChar(255)
+  role                   UserRole             @default(MEMBER)
+  isActive               Boolean              @default(true)
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  passwordResetToken     String?              @unique @db.VarChar(255)
+  passwordResetExpires   DateTime?
+  member                 Member?
+  refreshTokens          RefreshToken[]
   affiliationsApprouvees AffiliationDemande[] @relation("AffiliationApprovals")
+  gradeChangesEffectuees GradeHistory[]       @relation("GradeChangedBy")
+
   @@index([email])
   @@map("users")
 }
@@ -51,58 +54,62 @@ model RefreshToken {
   userId    Int
   expiresAt DateTime
   createdAt DateTime @default(now())
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@map("refresh_tokens")
 }
 
 model Club {
-  id          Int      @id @default(autoincrement())
-  nom         String   @db.VarChar(150)
-  code        String?  @unique @db.VarChar(20)
-  regionId    Int
-  ville       String?  @db.VarChar(100)
-  latitude    Float?
-  longitude   Float?
-  nomMaitre   String?  @db.VarChar(100)
-  telephone   String?  @db.VarChar(20)
-  email       String?  @db.VarChar(255)
-  description String?  @db.Text
-  logoUrl     String?  @db.VarChar(500)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  Int                  @id @default(autoincrement())
+  nom                 String               @db.VarChar(150)
+  code                String?              @unique @db.VarChar(20)
+  regionId            Int
+  ville               String?              @db.VarChar(100)
+  latitude            Float?
+  longitude           Float?
+  nomMaitre           String?              @db.VarChar(100)
+  telephone           String?              @db.VarChar(20)
+  email               String?              @db.VarChar(255)
+  description         String?              @db.Text
+  logoUrl             String?              @db.VarChar(500)
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
   region              Region               @relation(fields: [regionId], references: [id])
   members             Member[]
   affiliationDemandes AffiliationDemande[]
+
   @@index([regionId])
   @@map("clubs")
 }
 
 model Member {
-  id                  Int       @id @default(autoincrement())
-  userId              Int       @unique
+  id                  Int            @id @default(autoincrement())
+  userId              Int            @unique
   clubId              Int
-  prenom              String    @db.VarChar(100)
-  nom                 String    @db.VarChar(100)
+  prenom              String         @db.VarChar(100)
+  nom                 String         @db.VarChar(100)
   dateNaissance       DateTime?
   sexe                Sexe?
-  grade               String?   @db.VarChar(50)
-  discipline          String?   @db.VarChar(100)
-  photoUrl            String?   @db.VarChar(500)
-  adresse             String?   @db.VarChar(255)
-  nationalite         String?   @db.VarChar(100)
-  groupeSanguin       String?   @db.VarChar(10)
-  contactUrgenceNom   String?   @db.VarChar(150)
-  contactUrgencePhone String?   @db.VarChar(20)
+  grade               String?        @db.VarChar(50)
+  discipline          String?        @db.VarChar(100)
+  photoUrl            String?        @db.VarChar(500)
+  adresse             String?        @db.VarChar(255)
+  nationalite         String?        @db.VarChar(100)
+  groupeSanguin       String?        @db.VarChar(10)
+  contactUrgenceNom   String?        @db.VarChar(150)
+  contactUrgencePhone String?        @db.VarChar(20)
   latitude            Float?
   longitude           Float?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  club         Club          @relation(fields: [clubId], references: [id])
-  licenses     License[]
-  inscriptions Inscription[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  club                Club           @relation(fields: [clubId], references: [id])
+  licenses            License[]
+  inscriptions        Inscription[]
+  gradeHistory        GradeHistory[]
+
   @@index([clubId])
   @@map("members")
 }
@@ -112,22 +119,39 @@ enum Sexe {
   F
 }
 
+model GradeHistory {
+  id           Int      @id @default(autoincrement())
+  memberId     Int
+  ancienGrade  String?  @db.VarChar(50)
+  nouveauGrade String   @db.VarChar(50)
+  changedById  Int?
+  notes        String?  @db.Text
+  createdAt    DateTime @default(now())
+
+  member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  changedBy User?  @relation("GradeChangedBy", fields: [changedById], references: [id])
+
+  @@index([memberId])
+  @@map("grade_history")
+}
+
 model License {
-  id        Int           @id @default(autoincrement())
-  memberId  Int
-  uuid      String        @unique @default(uuid()) @db.VarChar(36)
-  qrToken   String        @unique @db.VarChar(512)
-  status    LicenseStatus @default(PENDING)
-  dateDebut DateTime?
-  dateFin   DateTime?
-  pdfUrl    String?       @db.VarChar(500)
-  annee     Int
+  id          Int           @id @default(autoincrement())
+  memberId    Int
+  uuid        String        @unique @default(uuid()) @db.VarChar(36)
+  qrToken     String        @unique @db.VarChar(512)
+  status      LicenseStatus @default(PENDING)
+  dateDebut   DateTime?
+  dateFin     DateTime?
+  pdfUrl      String?       @db.VarChar(500)
+  annee       Int
   notifiedJ30 DateTime?
   notifiedJ7  DateTime?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
-  member   Member    @relation(fields: [memberId], references: [id])
-  payments Payment[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  member      Member        @relation(fields: [memberId], references: [id])
+  payments    Payment[]
+
   @@index([memberId])
   @@index([status, dateFin])
   @@map("licenses")
@@ -150,7 +174,8 @@ model Payment {
   status         PaymentStatus   @default(PENDING)
   paidAt         DateTime?
   createdAt      DateTime        @default(now())
-  license License @relation(fields: [licenseId], references: [id])
+  license        License         @relation(fields: [licenseId], references: [id])
+
   @@index([licenseId])
   @@map("payments")
 }
@@ -170,50 +195,53 @@ enum PaymentStatus {
 }
 
 model Competition {
-  id          Int       @id @default(autoincrement())
-  titre       String    @db.VarChar(200)
-  description String?   @db.Text
-  regionId    Int
-  lieu        String?   @db.VarChar(200)
-  dateDebut   DateTime
-  dateFin     DateTime?
-  categories  Json?
-  imageUrl    String?   @db.VarChar(500)
-  isPublished Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           Int           @id @default(autoincrement())
+  titre        String        @db.VarChar(200)
+  description  String?       @db.Text
+  regionId     Int
+  lieu         String?       @db.VarChar(200)
+  dateDebut    DateTime
+  dateFin      DateTime?
+  categories   Json?
+  imageUrl     String?       @db.VarChar(500)
+  isPublished  Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   region       Region        @relation(fields: [regionId], references: [id])
   inscriptions Inscription[]
   resultats    Resultat[]
+
   @@index([regionId])
   @@index([dateDebut])
   @@map("competitions")
 }
 
 model Inscription {
-  id            Int      @id @default(autoincrement())
+  id            Int         @id @default(autoincrement())
   memberId      Int
   competitionId Int
-  categorie     String?  @db.VarChar(100)
-  statut        String   @default("inscrit") @db.VarChar(50)
-  createdAt     DateTime @default(now())
-  member      Member      @relation(fields: [memberId], references: [id])
-  competition Competition @relation(fields: [competitionId], references: [id])
+  categorie     String?     @db.VarChar(100)
+  statut        String      @default("inscrit") @db.VarChar(50)
+  createdAt     DateTime    @default(now())
+  member        Member      @relation(fields: [memberId], references: [id])
+  competition   Competition @relation(fields: [competitionId], references: [id])
+
   @@unique([memberId, competitionId])
   @@index([competitionId])
   @@map("inscriptions")
 }
 
 model Resultat {
-  id            Int      @id @default(autoincrement())
+  id            Int         @id @default(autoincrement())
   competitionId Int
   memberId      Int
-  categorie     String?  @db.VarChar(100)
+  categorie     String?     @db.VarChar(100)
   classement    Int?
   points        Float?
-  medaille      String?  @db.VarChar(20)
-  createdAt     DateTime @default(now())
-  competition Competition @relation(fields: [competitionId], references: [id])
+  medaille      String?     @db.VarChar(20)
+  createdAt     DateTime    @default(now())
+  competition   Competition @relation(fields: [competitionId], references: [id])
+
   @@index([competitionId])
   @@map("resultats")
 }
@@ -228,6 +256,7 @@ model Actualite {
   publishedAt DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+
   @@index([slug])
   @@index([isPublished, publishedAt])
   @@map("actualites")
@@ -255,56 +284,56 @@ enum AffiliationType {
 }
 
 enum AffiliationStatus {
-  PENDING_PAYMENT  // soumis, attente paiement Wave
-  PENDING          // payé, attente validation admin
+  PENDING_PAYMENT // soumis, attente paiement Wave
+  PENDING // payé, attente validation admin
   APPROVED
   REJECTED
 }
 
 model AffiliationDemande {
-  id          Int               @id @default(autoincrement())
-  type        AffiliationType
-  status      AffiliationStatus @default(PENDING_PAYMENT)
-  code        String?           @unique @db.VarChar(20)
+  id     Int               @id @default(autoincrement())
+  type   AffiliationType
+  status AffiliationStatus @default(PENDING_PAYMENT)
+  code   String?           @unique @db.VarChar(20)
 
   // Personal info (all types)
-  prenom      String            @db.VarChar(100)
-  nom         String            @db.VarChar(100)
-  email       String            @db.VarChar(255)
-  telephone   String            @db.VarChar(20)
+  prenom        String    @db.VarChar(100)
+  nom           String    @db.VarChar(100)
+  email         String    @db.VarChar(255)
+  telephone     String    @db.VarChar(20)
   dateNaissance DateTime?
-  sexe        Sexe?
-  adresse     String?           @db.VarChar(255)
-  ville       String?           @db.VarChar(100)
-  regionId    Int?
-  nationalite String?           @db.VarChar(100)
-  photoUrl    String?           @db.VarChar(500)
+  sexe          Sexe?
+  adresse       String?   @db.VarChar(255)
+  ville         String?   @db.VarChar(100)
+  regionId      Int?
+  nationalite   String?   @db.VarChar(100)
+  photoUrl      String?   @db.VarChar(500)
 
   // For MEMBRE and MAITRE: existing club affiliation
-  clubId      Int?
+  clubId Int?
 
   // Type-specific data stored as JSON
   donneesSpecifiques Json?
 
   // Payment
-  montant           Int               @default(0)
-  paymentProvider   PaymentProvider?
+  montant         Int              @default(0)
+  paymentProvider PaymentProvider?
   // Wave
-  waveCheckoutId    String?           @unique @db.VarChar(100)
-  waveCheckoutUrl   String?           @db.VarChar(500)
+  waveCheckoutId  String?          @unique @db.VarChar(100)
+  waveCheckoutUrl String?          @db.VarChar(500)
   // Orange Money
-  omOrderId         String?           @unique @db.VarChar(200)
-  omPayToken        String?           @db.VarChar(500)
-  paidAt            DateTime?
+  omOrderId       String?          @unique @db.VarChar(200)
+  omPayToken      String?          @db.VarChar(500)
+  paidAt          DateTime?
 
   // Admin
-  adminNote   String?           @db.Text
-  motifRejet  String?           @db.Text
+  adminNote    String?   @db.Text
+  motifRejet   String?   @db.Text
   approvedById Int?
-  approvedAt  DateTime?
+  approvedAt   DateTime?
 
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   region     Region? @relation(fields: [regionId], references: [id])
   club       Club?   @relation(fields: [clubId], references: [id])
@@ -316,4 +345,3 @@ model AffiliationDemande {
   @@index([omOrderId])
   @@map("affiliation_demandes")
 }
-
