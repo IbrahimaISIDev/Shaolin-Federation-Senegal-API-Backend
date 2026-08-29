@@ -364,3 +364,18 @@ model MediaItem {
   @@index([createdAt])
   @@map("media_items")
 }
+
+model Settings {
+  id                   Int      @id @default(1)
+  orgName              String   @default("Association Disciples Shaolin Si Sénégal") @db.VarChar(200)
+  contactEmail         String?  @db.VarChar(255)
+  contactPhone         String?  @db.VarChar(30)
+  website              String?  @db.VarChar(255)
+  notifyNewMember      Boolean  @default(true)
+  notifyNewAffiliation Boolean  @default(true)
+  notifyCompetitions   Boolean  @default(false)
+  notifyNewsletter     Boolean  @default(false)
+  updatedAt            DateTime @updatedAt
+
+  @@map("settings")
+}
