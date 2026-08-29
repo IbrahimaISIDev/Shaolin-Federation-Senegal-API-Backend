@@ -17,6 +17,7 @@ import contactRouter from './routes/contact.routes';
 import clubManagerRouter from './routes/club.manager.routes';
 import affiliationRouter from './routes/affiliation.routes';
 import paymentRouter from './routes/payment.routes';
+import mediaRouter from './routes/media.routes';
 import { startLicenseExpiryJob } from './jobs/license-expiry.job';
 
 const app = express();
@@ -62,6 +63,7 @@ app.use('/api/competitions', competitionsRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/club', clubManagerRouter);
+app.use('/api/admin/media', mediaRouter);
 app.use('/api/affiliations', affiliationRouter);
 app.use('/api/payments', paymentRouter);
 

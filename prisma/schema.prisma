@@ -37,6 +37,7 @@ model User {
   refreshTokens          RefreshToken[]
   affiliationsApprouvees AffiliationDemande[] @relation("AffiliationApprovals")
   gradeChangesEffectuees GradeHistory[]       @relation("GradeChangedBy")
+  mediaUploads           MediaItem[]
 
   @@index([email])
   @@map("users")
@@ -344,4 +345,22 @@ model AffiliationDemande {
   @@index([waveCheckoutId])
   @@index([omOrderId])
   @@map("affiliation_demandes")
+}
+
+model MediaItem {
+  id           Int      @id @default(autoincrement())
+  url          String   @db.VarChar(500)
+  publicId     String   @db.VarChar(255)
+  title        String?  @db.VarChar(150)
+  mimeType     String?  @db.VarChar(50)
+  size         Int?
+  width        Int?
+  height       Int?
+  uploadedById Int?
+  createdAt    DateTime @default(now())
+
+  uploadedBy User? @relation(fields: [uploadedById], references: [id])
+
+  @@index([createdAt])
+  @@map("media_items")
 }
