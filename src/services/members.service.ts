@@ -12,10 +12,16 @@ export const getMemberProfile = async (userId: number) => {
       },
       licenses: {
         orderBy: { createdAt: 'desc' },
-        take: 1,
+        take: 5, // au-delà du plus récent : permet au frontend de distinguer un renouvellement
+                 // en cours (nouvelle licence PENDING) de la licence ACTIVE/EXPIRED en vigueur
         select: {
           id: true, uuid: true, status: true,
           dateDebut: true, dateFin: true, annee: true, pdfUrl: true,
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: { id: true, status: true, transactionRef: true },
+          },
         },
       },
     },
