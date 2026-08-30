@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import multer from 'multer';
-import { uploadMemberPhoto, uploadClubLogo, uploadArticleImage } from '../services/upload.service';
+import { uploadMemberPhoto, uploadClubLogo, uploadArticleImage, uploadPaymentProof } from '../services/upload.service';
 
 // ─── Configuration Multer (stockage en mémoire) ───────────────────────────────
 export const upload = multer({
@@ -52,6 +52,20 @@ export const uploadImage = async (req: Request, res: Response): Promise<void> =>
     }
     const url = await uploadArticleImage(req.file);
     res.json({ data: { url }, message: 'Image uploadée' });
+  } catch (err: any) {
+    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+  }
+};
+
+// ─── Upload preuve de paiement (public) ───────────────────────────────────────
+export const uploadProof = async (req: Request, res: Response): Promise<void> => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'Aucun fichier fourni', code: 'NO_FILE' });
+      return;
+    }
+    const url = await uploadPaymentProof(req.file);
+    res.json({ data: { url }, message: 'Preuve envoyée' });
   } catch (err: any) {
     res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
   }

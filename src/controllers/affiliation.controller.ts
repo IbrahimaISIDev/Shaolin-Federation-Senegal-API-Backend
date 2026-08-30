@@ -108,7 +108,7 @@ export const getAffiliation = async (req: Request, res: Response) => {
 export const approve = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string);
-    const adminId = (req as any).user.id;
+    const adminId = req.user!.userId;
     const { adminNote } = req.body;
     const updated = await affiliationService.approveAffiliation(id, adminId, adminNote);
     res.json({ success: true, data: updated, message: 'Demande approuvée' });
@@ -120,12 +120,37 @@ export const approve = async (req: Request, res: Response) => {
 export const reject = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string);
-    const adminId = (req as any).user.id;
+    const adminId = req.user!.userId;
     const { motifRejet } = req.body;
     if (!motifRejet) return res.status(400).json({ success: false, message: 'Le motif de rejet est requis' });
     const updated = await affiliationService.rejectAffiliation(id, adminId, motifRejet);
     res.json({ success: true, data: updated, message: 'Demande rejetée' });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const submitPaymentProof = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const { referenceManuelle, preuvePaiementUrl } = req.body;
+    if (!referenceManuelle || !preuvePaiementUrl) {
+      return res.status(400).json({ success: false, message: 'Référence et preuve de paiement requises' });
+    }
+    const updated = await affiliationService.submitPaymentProof(id, { referenceManuelle, preuvePaiementUrl });
+    res.json({ success: true, data: updated, message: 'Preuve de paiement envoyée' });
+  } catch (err: any) {
+    res.status(err.status || 400).json({ success: false, message: err.message });
+  }
+};
+
+export const confirmPayment = async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id as string);
+    const adminId = req.user!.userId;
+    const updated = await affiliationService.confirmAffiliationPayment(id, adminId);
+    res.json({ success: true, data: updated, message: 'Paiement confirmé' });
+  } catch (err: any) {
+    res.status(err.status || 400).json({ success: false, message: err.message });
   }
 };

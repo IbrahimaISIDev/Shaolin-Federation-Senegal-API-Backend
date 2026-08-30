@@ -135,6 +135,27 @@ export const uploadArticleImage = async (file: Express.Multer.File): Promise<str
   return result.secure_url;
 };
 
+// ─── Upload preuve de paiement (public — candidat sans compte) ────────────────
+export const uploadPaymentProof = async (file: Express.Multer.File): Promise<string> => {
+  validateImageFile(file);
+
+  const result = await new Promise<any>((resolve, reject) => {
+    cloudinary.uploader.upload_stream(
+      {
+        folder: 'shaolin/preuves-paiement',
+        public_id: `preuve_${Date.now()}`,
+        transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+      },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    ).end(file.buffer);
+  });
+
+  return result.secure_url;
+};
+
 // ─── Helper : extraire le public_id Cloudinary depuis une URL ─────────────────
 const extractCloudinaryPublicId = (url: string): string | null => {
   try {

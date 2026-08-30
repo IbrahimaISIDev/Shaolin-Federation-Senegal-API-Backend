@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware';
-import { upload, uploadPhoto, uploadLogo, uploadImage } from '../controllers/upload.controller';
+import { upload, uploadPhoto, uploadLogo, uploadImage, uploadProof } from '../controllers/upload.controller';
 import { Request, Response } from 'express';
 import { generateLicensePDF } from '../services/pdf.service';
 
@@ -30,6 +30,13 @@ router.post(
   requireRole('ADMIN'),
   upload.single('image'),
   uploadImage
+);
+
+// PUT /api/upload/payment-proof  — public (candidat sans compte)
+router.put(
+  '/payment-proof',
+  upload.single('proof'),
+  uploadProof
 );
 
 // GET /api/upload/licenses/:id/pdf  — membre connecté

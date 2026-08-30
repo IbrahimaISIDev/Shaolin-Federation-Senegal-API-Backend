@@ -36,6 +36,7 @@ model User {
   member                 Member?
   refreshTokens          RefreshToken[]
   affiliationsApprouvees AffiliationDemande[] @relation("AffiliationApprovals")
+  paiementsConfirmes     AffiliationDemande[] @relation("PaymentConfirmations")
   gradeChangesEffectuees GradeHistory[]       @relation("GradeChangedBy")
   mediaUploads           MediaItem[]
 
@@ -317,15 +318,20 @@ model AffiliationDemande {
   donneesSpecifiques Json?
 
   // Payment
-  montant         Int              @default(0)
-  paymentProvider PaymentProvider?
+  montant              Int              @default(0)
+  paymentProvider      PaymentProvider?
   // Wave
-  waveCheckoutId  String?          @unique @db.VarChar(100)
-  waveCheckoutUrl String?          @db.VarChar(500)
+  waveCheckoutId       String?          @unique @db.VarChar(100)
+  waveCheckoutUrl      String?          @db.VarChar(500)
   // Orange Money
-  omOrderId       String?          @unique @db.VarChar(200)
-  omPayToken      String?          @db.VarChar(500)
-  paidAt          DateTime?
+  omOrderId            String?          @unique @db.VarChar(200)
+  omPayToken           String?          @db.VarChar(500)
+  paidAt               DateTime?
+  // Paiement manuel (référence + preuve, confirmé par un admin)
+  preuvePaiementUrl    String?          @db.VarChar(500)
+  referenceManuelle    String?          @db.VarChar(255)
+  paymentConfirmedById Int?
+  paymentConfirmedAt   DateTime?
 
   // Admin
   adminNote    String?   @db.Text
@@ -336,9 +342,10 @@ model AffiliationDemande {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  region     Region? @relation(fields: [regionId], references: [id])
-  club       Club?   @relation(fields: [clubId], references: [id])
-  approvedBy User?   @relation("AffiliationApprovals", fields: [approvedById], references: [id])
+  region             Region? @relation(fields: [regionId], references: [id])
+  club               Club?   @relation(fields: [clubId], references: [id])
+  approvedBy         User?   @relation("AffiliationApprovals", fields: [approvedById], references: [id])
+  paymentConfirmedBy User?   @relation("PaymentConfirmations", fields: [paymentConfirmedById], references: [id])
 
   @@index([type, status])
   @@index([email])

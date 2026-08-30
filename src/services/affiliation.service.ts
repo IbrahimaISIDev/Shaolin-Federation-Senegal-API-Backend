@@ -1,5 +1,5 @@
 import { PrismaClient, AffiliationType, AffiliationStatus, Sexe } from '@prisma/client';
-import { sendAffiliationApprovedEmail, sendAffiliationRejectedEmail } from './email.service';
+import { sendAffiliationApprovedEmail, sendAffiliationRejectedEmail, sendAffiliationReceivedEmail } from './email.service';
 import { generateLicense, activateLicense } from './licenses.service';
 import { generateLicensePDF } from './pdf.service';
 
@@ -365,6 +365,54 @@ export async function rejectAffiliation(id: number, adminId: number, motifRejet:
   });
 
   sendAffiliationRejectedEmail(demande.email, `${demande.prenom} ${demande.nom}`, motifRejet).catch(() => {});
+
+  return updated;
+}
+
+// ─── Paiement manuel ──────────────────────────────────────────────────────────
+
+export async function submitPaymentProof(
+  id: number,
+  data: { referenceManuelle: string; preuvePaiementUrl: string }
+) {
+  const demande = await prisma.affiliationDemande.findUnique({ where: { id } });
+  if (!demande) throw { status: 404, message: 'Demande introuvable' };
+  if (demande.status !== 'PENDING_PAYMENT') {
+    throw { status: 400, message: 'Cette demande n\'est plus en attente de paiement' };
+  }
+
+  return prisma.affiliationDemande.update({
+    where: { id },
+    data: {
+      referenceManuelle: data.referenceManuelle,
+      preuvePaiementUrl: data.preuvePaiementUrl,
+    },
+  });
+}
+
+export async function confirmAffiliationPayment(id: number, adminId: number) {
+  const demande = await prisma.affiliationDemande.findUnique({ where: { id } });
+  if (!demande) throw { status: 404, message: 'Demande introuvable' };
+  if (demande.status !== 'PENDING_PAYMENT') {
+    throw { status: 400, message: 'Cette demande n\'est plus en attente de paiement' };
+  }
+
+  const updated = await prisma.affiliationDemande.update({
+    where: { id },
+    data: {
+      status: 'PENDING',
+      paidAt: new Date(),
+      paymentConfirmedById: adminId,
+      paymentConfirmedAt: new Date(),
+    },
+  });
+
+  sendAffiliationReceivedEmail(
+    demande.email,
+    `${demande.prenom} ${demande.nom}`,
+    demande.type,
+    demande.id
+  ).catch(() => {});
 
   return updated;
 }
