@@ -35,7 +35,8 @@
     "prisma": "5.22.0",
     "puppeteer": "^24.42.0",
     "qrcode": "^1.5.4",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.10",

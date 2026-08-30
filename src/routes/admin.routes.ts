@@ -49,6 +49,9 @@ import { stats } from '../controllers/admin.stats.controller';
 // Admin — Renouvellements de licence
 import { listRenewals, confirmRenewal, rejectRenewal } from '../controllers/admin.renewals.controller';
 
+// Admin — Import Excel (clubs, membres)
+import { uploadExcel, importClubs, importMembers } from '../controllers/import.controller';
+
 const router = Router();
 
 // Toutes les routes admin nécessitent le rôle ADMIN
@@ -63,6 +66,8 @@ router.get('/stats', stats);
 router.get('/members', listMembers);
 // GET  /api/admin/members/export/pdf?search=&club=&status=&annee=
 router.get('/members/export/pdf', exportMembersPdf);
+// POST /api/admin/members/import — import en masse depuis un fichier Excel
+router.post('/members/import', uploadExcel.single('file'), importMembers);
 // GET  /api/admin/members/:id
 router.get('/members/:id', getMember);
 // PUT  /api/admin/members/:id
@@ -81,6 +86,8 @@ router.get('/members/:id/grade-history', gradeHistory);
 router.get('/clubs', listClubs);
 // POST /api/admin/clubs
 router.post('/clubs', createClub);
+// POST /api/admin/clubs/import — import en masse depuis un fichier Excel
+router.post('/clubs/import', uploadExcel.single('file'), importClubs);
 // PUT  /api/admin/clubs/:id
 router.put('/clubs/:id', updateClub);
 // PATCH /api/admin/clubs/:id/activate
