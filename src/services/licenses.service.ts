@@ -1,10 +1,15 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PaymentProvider } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import { sendLicenseExpiringEmail } from './email.service';
 
 const prisma = new PrismaClient();
+
+// Prix du renouvellement — source de vérité côté serveur (ne pas faire
+// confiance à un montant envoyé par le client). Miroir de
+// LICENSE_FEES.RENEWAL côté frontend (lib/constants/index.ts).
+export const RENEWAL_FEE = 10300;
 
 // ─── Générer un QR Token signé ───────────────────────────────────────────────
 const generateQRToken = (licenseUuid: string, memberId: number): string => {
@@ -200,4 +205,105 @@ export const notifyExpiringLicenses = async () => {
   const countJ7 = await sendExpiryReminders(7, 'notifiedJ7');
   console.log(`📧 CRON: ${countJ30} rappel(s) J-30, ${countJ7} rappel(s) J-7 envoyés`);
   return { countJ30, countJ7 };
+};
+
+// ─── Renouvellement annuel (paiement manuel) ─────────────────────────────────
+
+// Démarre un renouvellement : crée la licence de l'année cible (PENDING) et
+// le paiement associé (PENDING). generateLicense() protège déjà contre les
+// doublons pour une même année (LICENSE_EXISTS).
+export const renewLicense = async (memberId: number, provider: PaymentProvider) => {
+  const latest = await prisma.license.findFirst({
+    where: { memberId },
+    orderBy: { annee: 'desc' },
+  });
+  const currentYear = new Date().getFullYear();
+  const targetYear = latest ? Math.max(latest.annee + 1, currentYear) : currentYear;
+
+  const license = await generateLicense(memberId, targetYear);
+
+  const payment = await prisma.payment.create({
+    data: {
+      licenseId: license.id,
+      montant: RENEWAL_FEE,
+      provider,
+      status: 'PENDING',
+    },
+  });
+
+  return { license, payment };
+};
+
+export const submitRenewalProof = async (
+  licenseId: number,
+  memberId: number,
+  data: { transactionRef: string; preuveUrl: string }
+) => {
+  const license = await prisma.license.findFirst({
+    where: { id: licenseId, memberId },
+    include: { payments: { orderBy: { createdAt: 'desc' }, take: 1 } },
+  });
+  if (!license) throw { status: 404, message: 'Licence introuvable', code: 'NOT_FOUND' };
+
+  const payment = license.payments[0];
+  if (!payment || payment.status !== 'PENDING') {
+    throw { status: 400, message: 'Aucun paiement en attente pour cette licence', code: 'NO_PENDING_PAYMENT' };
+  }
+
+  return prisma.payment.update({
+    where: { id: payment.id },
+    data: { transactionRef: data.transactionRef, preuveUrl: data.preuveUrl },
+  });
+};
+
+// ─── Admin : renouvellements en attente de vérification ──────────────────────
+export const listPendingRenewals = async () => {
+  return prisma.payment.findMany({
+    where: { status: 'PENDING', transactionRef: { not: null } },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      license: {
+        include: {
+          member: {
+            select: {
+              id: true, prenom: true, nom: true,
+              user: { select: { email: true } },
+              club: { select: { nom: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+export const confirmRenewalPayment = async (paymentId: number, adminId: number) => {
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment) throw { status: 404, message: 'Paiement introuvable', code: 'NOT_FOUND' };
+  if (payment.status !== 'PENDING') {
+    throw { status: 400, message: 'Ce paiement a déjà été traité', code: 'ALREADY_PROCESSED' };
+  }
+
+  const [updatedPayment] = await prisma.$transaction([
+    prisma.payment.update({
+      where: { id: paymentId },
+      data: { status: 'SUCCESS', paidAt: new Date(), confirmedById: adminId, confirmedAt: new Date() },
+    }),
+    prisma.license.update({ where: { id: payment.licenseId }, data: { status: 'ACTIVE' } }),
+  ]);
+
+  return updatedPayment;
+};
+
+export const rejectRenewalPayment = async (paymentId: number, adminId: number) => {
+  const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
+  if (!payment) throw { status: 404, message: 'Paiement introuvable', code: 'NOT_FOUND' };
+  if (payment.status !== 'PENDING') {
+    throw { status: 400, message: 'Ce paiement a déjà été traité', code: 'ALREADY_PROCESSED' };
+  }
+
+  return prisma.payment.update({
+    where: { id: paymentId },
+    data: { status: 'FAILED', confirmedById: adminId, confirmedAt: new Date() },
+  });
 };

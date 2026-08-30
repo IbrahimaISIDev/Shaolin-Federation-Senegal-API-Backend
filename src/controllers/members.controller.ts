@@ -6,6 +6,8 @@ import {
   getMemberPayments,
   getMemberInscriptions,
   getActiveLicense,
+  renewMyLicense,
+  submitMyRenewalProof,
 } from '../services/members.service';
 
 const UpdateProfileSchema = z.object({
@@ -64,6 +66,42 @@ export const getMyLicense = async (req: Request, res: Response): Promise<void> =
     const license = await getActiveLicense(req.user!.userId);
     res.json({ data: license });
   } catch (err: any) {
+    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+  }
+};
+
+const RenewSchema = z.object({ provider: z.enum(['WAVE', 'ORANGE_MONEY']) });
+
+export const renewLicense = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { provider } = RenewSchema.parse(req.body);
+    const result = await renewMyLicense(req.user!.userId, provider);
+    res.status(201).json({ data: result, message: 'Renouvellement initié' });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
+      return;
+    }
+    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+  }
+};
+
+const RenewalProofSchema = z.object({
+  transactionRef: z.string().min(1),
+  preuveUrl: z.string().url(),
+});
+
+export const submitRenewalProof = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const data = RenewalProofSchema.parse(req.body);
+    const licenseId = parseInt(req.params.licenseId as string);
+    const payment = await submitMyRenewalProof(req.user!.userId, licenseId, data);
+    res.json({ data: payment, message: 'Preuve de paiement envoyée' });
+  } catch (err: any) {
+    if (err.name === 'ZodError') {
+      res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
+      return;
+    }
     res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
   }
 };

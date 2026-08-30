@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, PaymentProvider } from '@prisma/client';
+import { renewLicense, submitRenewalProof } from './licenses.service';
 const prisma = new PrismaClient();
 
 export const getMemberProfile = async (userId: number) => {
@@ -92,4 +93,20 @@ export const getActiveLicense = async (userId: number) => {
   });
 
   return license;
+};
+
+export const renewMyLicense = async (userId: number, provider: PaymentProvider) => {
+  const member = await prisma.member.findUnique({ where: { userId } });
+  if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
+  return renewLicense(member.id, provider);
+};
+
+export const submitMyRenewalProof = async (
+  userId: number,
+  licenseId: number,
+  data: { transactionRef: string; preuveUrl: string }
+) => {
+  const member = await prisma.member.findUnique({ where: { userId } });
+  if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
+  return submitRenewalProof(licenseId, member.id, data);
 };

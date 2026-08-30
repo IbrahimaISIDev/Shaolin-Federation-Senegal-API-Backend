@@ -23,22 +23,23 @@ model Region {
 }
 
 model User {
-  id                     Int                  @id @default(autoincrement())
-  email                  String               @unique @db.VarChar(255)
-  phone                  String?              @db.VarChar(20)
-  password               String               @db.VarChar(255)
-  role                   UserRole             @default(MEMBER)
-  isActive               Boolean              @default(true)
-  createdAt              DateTime             @default(now())
-  updatedAt              DateTime             @updatedAt
-  passwordResetToken     String?              @unique @db.VarChar(255)
-  passwordResetExpires   DateTime?
-  member                 Member?
-  refreshTokens          RefreshToken[]
-  affiliationsApprouvees AffiliationDemande[] @relation("AffiliationApprovals")
-  paiementsConfirmes     AffiliationDemande[] @relation("PaymentConfirmations")
-  gradeChangesEffectuees GradeHistory[]       @relation("GradeChangedBy")
-  mediaUploads           MediaItem[]
+  id                       Int                  @id @default(autoincrement())
+  email                    String               @unique @db.VarChar(255)
+  phone                    String?              @db.VarChar(20)
+  password                 String               @db.VarChar(255)
+  role                     UserRole             @default(MEMBER)
+  isActive                 Boolean              @default(true)
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+  passwordResetToken       String?              @unique @db.VarChar(255)
+  passwordResetExpires     DateTime?
+  member                   Member?
+  refreshTokens            RefreshToken[]
+  affiliationsApprouvees   AffiliationDemande[] @relation("AffiliationApprovals")
+  paiementsConfirmes       AffiliationDemande[] @relation("PaymentConfirmations")
+  renouvellementsConfirmes Payment[]            @relation("PaymentConfirmations2")
+  gradeChangesEffectuees   GradeHistory[]       @relation("GradeChangedBy")
+  mediaUploads             MediaItem[]
 
   @@index([email])
   @@map("users")
@@ -176,7 +177,12 @@ model Payment {
   status         PaymentStatus   @default(PENDING)
   paidAt         DateTime?
   createdAt      DateTime        @default(now())
+  // Paiement manuel (preuve + confirmation admin)
+  preuveUrl      String?         @db.VarChar(500)
+  confirmedById  Int?
+  confirmedAt    DateTime?
   license        License         @relation(fields: [licenseId], references: [id])
+  confirmedBy    User?           @relation("PaymentConfirmations2", fields: [confirmedById], references: [id])
 
   @@index([licenseId])
   @@map("payments")

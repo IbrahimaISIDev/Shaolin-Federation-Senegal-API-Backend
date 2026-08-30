@@ -46,6 +46,9 @@ import {
 // Admin — Stats
 import { stats } from '../controllers/admin.stats.controller';
 
+// Admin — Renouvellements de licence
+import { listRenewals, confirmRenewal, rejectRenewal } from '../controllers/admin.renewals.controller';
+
 const router = Router();
 
 // Toutes les routes admin nécessitent le rôle ADMIN
@@ -114,5 +117,13 @@ router.get('/competitions/:id', getCompetition);
 router.put('/competitions/:id', updateCompetition);
 // DELETE /api/admin/competitions/:id
 router.delete('/competitions/:id', removeCompetition);
+
+// ── Renouvellements de licence ──────────────────────────────────────────────
+// GET   /api/admin/renewals
+router.get('/renewals', listRenewals);
+// PATCH /api/admin/renewals/:paymentId/confirm
+router.patch('/renewals/:paymentId/confirm', confirmRenewal);
+// PATCH /api/admin/renewals/:paymentId/reject
+router.patch('/renewals/:paymentId/reject', rejectRenewal);
 
 export default router;

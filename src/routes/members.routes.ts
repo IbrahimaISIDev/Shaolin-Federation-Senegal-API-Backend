@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware';
-import { getMe, updateMe, getMyPayments, getMyLicense, getMyInscriptions } from '../controllers/members.controller';
+import {
+  getMe, updateMe, getMyPayments, getMyLicense, getMyInscriptions,
+  renewLicense, submitRenewalProof,
+} from '../controllers/members.controller';
 
 const router = Router();
 
@@ -15,6 +18,12 @@ router.put('/me', updateMe);
 
 // GET  /api/members/me/license
 router.get('/me/license', getMyLicense);
+
+// POST /api/members/me/license/renew
+router.post('/me/license/renew', renewLicense);
+
+// PATCH /api/members/me/license/:licenseId/payment-proof
+router.patch('/me/license/:licenseId/payment-proof', submitRenewalProof);
 
 // GET  /api/members/me/payments
 router.get('/me/payments', getMyPayments);
