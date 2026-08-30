@@ -20,7 +20,7 @@ export const getMemberProfile = async (userId: number) => {
           payments: {
             orderBy: { createdAt: 'desc' },
             take: 1,
-            select: { id: true, status: true, transactionRef: true },
+            select: { id: true, status: true, transactionRef: true, montant: true, provider: true },
           },
         },
       },
