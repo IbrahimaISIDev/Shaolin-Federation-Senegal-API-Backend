@@ -84,7 +84,8 @@ export const registerService = async (input: RegisterInput) => {
   });
 
   // Email de bienvenue (non-bloquant)
-  sendWelcomeEmail(result.user.email, result.member.prenom).catch(() => {});
+  sendWelcomeEmail(result.user.email, result.member.prenom)
+    .catch((e) => console.error('[email] sendWelcomeEmail failed:', e.message));
 
   return {
     id: result.user.id,
@@ -218,7 +219,14 @@ export const forgotPasswordService = async (email: string) => {
   });
 
   const prenom = user.member?.prenom ?? 'Membre';
-  await sendPasswordResetEmail(user.email, prenom, token);
+  try {
+    await sendPasswordResetEmail(user.email, prenom, token);
+  } catch (e: any) {
+    // Le token existe déjà en base — on log l'échec d'envoi sans le remonter
+    // au client (le contrôleur répond toujours 200 pour ne pas révéler si
+    // l'email existe), sinon cet échec restait totalement invisible.
+    console.error('[email] sendPasswordResetEmail failed:', e.message);
+  }
 };
 
 export const resetPasswordService = async (token: string, newPassword: string) => {

@@ -97,7 +97,7 @@ export const inscrireCompetition = async (memberId: number, competitionId: numbe
             titre:     competition.titre,
             dateDebut: competition.dateDebut,
             lieu:      competition.lieu,
-        }).catch(() => {});
+        }).catch((e) => console.error('[email] sendCompetitionRegistrationEmail failed:', e.message));
     }
 
     return inscription;

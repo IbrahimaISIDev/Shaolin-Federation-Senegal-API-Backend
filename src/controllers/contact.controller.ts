@@ -17,7 +17,8 @@ export const sendContact = async (req: Request, res: Response): Promise<void> =>
     try {
         const data = ContactSchema.parse(req.body);
         await prisma.contactMessage.create({ data });
-        sendContactNotificationEmail(data).catch(() => {});
+        sendContactNotificationEmail(data)
+            .catch((e) => console.error('[email] sendContactNotificationEmail failed:', e.message));
         res.status(201).json({ message: 'Message envoyé avec succès' });
     } catch (err: any) {
         if (err.name === 'ZodError') {

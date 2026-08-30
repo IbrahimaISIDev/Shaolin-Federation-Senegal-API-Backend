@@ -180,7 +180,8 @@ export async function importMembersFromExcel(buffer: Buffer): Promise<ImportRepo
         await activateLicense(license.id);
       }
 
-      sendMemberImportedEmail(email, `${prenom} ${nom}`, club.nom, { email, password: tempPassword }).catch(() => {});
+      sendMemberImportedEmail(email, `${prenom} ${nom}`, club.nom, { email, password: tempPassword })
+        .catch((e) => console.error('[email] sendMemberImportedEmail failed:', e.message));
 
       report.created++;
     } catch (e: any) {

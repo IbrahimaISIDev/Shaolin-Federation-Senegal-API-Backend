@@ -288,7 +288,8 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
         },
       });
     }
-    sendAffiliationApprovedEmail(demande.email, `${demande.prenom} ${demande.nom}`, 'CLUB', code).catch(() => {});
+    sendAffiliationApprovedEmail(demande.email, `${demande.prenom} ${demande.nom}`, 'CLUB', code)
+      .catch((e) => console.error('[email] sendAffiliationApprovedEmail (CLUB) failed:', e.message));
   } else if (demande.type === 'MAITRE' || demande.type === 'MEMBRE') {
     // Create a user account and member record
     const tempPassword = Math.random().toString(36).slice(2, 10);
@@ -341,7 +342,7 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
       demande.type,
       code,
       { email: demande.email, password: tempPassword }
-    ).catch(() => {});
+    ).catch((e) => console.error('[email] sendAffiliationApprovedEmail failed:', e.message));
   }
 
   return updated;
@@ -364,7 +365,8 @@ export async function rejectAffiliation(id: number, adminId: number, motifRejet:
     },
   });
 
-  sendAffiliationRejectedEmail(demande.email, `${demande.prenom} ${demande.nom}`, motifRejet).catch(() => {});
+  sendAffiliationRejectedEmail(demande.email, `${demande.prenom} ${demande.nom}`, motifRejet)
+    .catch((e) => console.error('[email] sendAffiliationRejectedEmail failed:', e.message));
 
   return updated;
 }
@@ -412,7 +414,7 @@ export async function confirmAffiliationPayment(id: number, adminId: number) {
     `${demande.prenom} ${demande.nom}`,
     demande.type,
     demande.id
-  ).catch(() => {});
+  ).catch((e) => console.error('[email] sendAffiliationReceivedEmail failed:', e.message));
 
   return updated;
 }

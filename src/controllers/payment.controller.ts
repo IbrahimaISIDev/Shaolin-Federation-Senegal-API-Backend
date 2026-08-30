@@ -49,7 +49,7 @@ async function confirmPayment(demandeId: number, provider: 'WAVE' | 'ORANGE_MONE
     `${demande.prenom} ${demande.nom}`,
     demande.type,
     demande.id
-  ).catch(() => {});
+  ).catch((e) => console.error('[email] sendAffiliationReceivedEmail failed:', e.message));
 }
 
 // ─── Wave ─────────────────────────────────────────────────────────────────────
