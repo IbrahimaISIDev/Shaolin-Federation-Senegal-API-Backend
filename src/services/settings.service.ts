@@ -19,6 +19,8 @@ export const updateSettings = async (data: {
     contactEmail?: string;
     contactPhone?: string;
     website?: string;
+    paymentWaveNumber?: string;
+    paymentOMNumber?: string;
     notifyNewMember?: boolean;
     notifyNewAffiliation?: boolean;
     notifyCompetitions?: boolean;

@@ -384,6 +384,8 @@ model Settings {
   contactEmail         String?  @db.VarChar(255)
   contactPhone         String?  @db.VarChar(30)
   website              String?  @db.VarChar(255)
+  paymentWaveNumber    String?  @db.VarChar(30)
+  paymentOMNumber      String?  @db.VarChar(30)
   notifyNewMember      Boolean  @default(true)
   notifyNewAffiliation Boolean  @default(true)
   notifyCompetitions   Boolean  @default(false)

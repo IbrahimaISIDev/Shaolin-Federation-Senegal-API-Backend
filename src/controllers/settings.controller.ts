@@ -10,6 +10,8 @@ const UpdateSettingsSchema = z.object({
     contactEmail: z.string().email().optional().or(z.literal('')),
     contactPhone: z.string().max(30).optional().or(z.literal('')),
     website: z.string().url().optional().or(z.literal('')),
+    paymentWaveNumber: z.string().max(30).optional().or(z.literal('')),
+    paymentOMNumber: z.string().max(30).optional().or(z.literal('')),
     notifyNewMember: z.boolean().optional(),
     notifyNewAffiliation: z.boolean().optional(),
     notifyCompetitions: z.boolean().optional(),
