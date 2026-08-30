@@ -79,8 +79,21 @@ app.use((req, res) => {
 });
 
 // ─── Error handler global ────────────────────────────────────────────────────
+// Filet de sécurité pour les erreurs qui n'ont pas transité par le try/catch
+// d'un contrôleur (ex: rejet multer côté middleware, avant la route).
+// On ne renvoie le message d'erreur brut au client que pour les erreurs
+// explicitement typées (status défini à la main, ou erreur multer connue) —
+// jamais pour une exception inattendue, qui pourrait exposer des détails internes.
 app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err);
+  if (typeof err?.status === 'number') {
+    res.status(err.status).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    return;
+  }
+  if (err?.name === 'MulterError') {
+    res.status(400).json({ error: err.message, code: err.code || 'UPLOAD_ERROR' });
+    return;
+  }
   res.status(500).json({ error: 'Erreur serveur interne', code: 'SERVER_ERROR' });
 });
 

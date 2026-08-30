@@ -7,14 +7,20 @@ export const uploadExcel = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB max
   fileFilter: (_req, file, cb) => {
-    const allowed = [
+    const allowedMimes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
       'application/vnd.ms-excel', // .xls
     ];
-    if (allowed.includes(file.mimetype)) {
+    // Le type MIME envoyé pour les fichiers Excel varie selon le navigateur/OS
+    // (certains envoient application/octet-stream) — on se rabat sur l'extension.
+    const hasValidExtension = /\.(xlsx|xls)$/i.test(file.originalname);
+    if (allowedMimes.includes(file.mimetype) || hasValidExtension) {
       cb(null, true);
     } else {
-      cb(new Error('Format non supporté. Utilisez un fichier .xlsx ou .xls'));
+      const err: any = new Error('Format non supporté. Utilisez un fichier .xlsx ou .xls');
+      err.status = 400;
+      err.code = 'INVALID_FILE_TYPE';
+      cb(err);
     }
   },
 });
