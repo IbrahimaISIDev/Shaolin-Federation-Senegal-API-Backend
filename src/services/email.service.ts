@@ -150,6 +150,28 @@ export const sendAffiliationApprovedEmail = async (
     await transporter.sendMail({ from: FROM, to, subject: `Affiliation approuvée — Code ${code}`, html: wrap(body) });
 };
 
+// ─── 5bis. Compte créé via import en masse (membres déjà affiliés) ────────────
+export const sendMemberImportedEmail = async (
+    to: string,
+    nomComplet: string,
+    clubNom: string,
+    credentials: { email: string; password: string }
+) => {
+    const body = `
+      <h2 style="color:#0f172a;margin-top:0">Ton espace membre est prêt 🥋</h2>
+      <p style="color:#475569">Bonjour ${nomComplet},</p>
+      <p style="color:#475569">Un espace membre a été créé pour toi sur la plateforme de l'ADSS Sénégal, au sein du club <strong>${clubNom}</strong>. Ta licence est active.</p>
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:20px 0">
+        <p style="margin:0 0 8px;font-weight:700;color:#14532d">Vos identifiants de connexion</p>
+        <p style="margin:0;color:#166534;font-size:14px">Email : <strong>${credentials.email}</strong></p>
+        <p style="margin:4px 0 0;color:#166534;font-size:14px">Mot de passe temporaire : <strong>${credentials.password}</strong></p>
+        <p style="margin:8px 0 0;color:#166534;font-size:13px">Veuillez changer votre mot de passe dès la première connexion.</p>
+      </div>
+      ${btn('Accéder à mon espace', `${SITE_URL}/connexion`)}`;
+
+    await transporter.sendMail({ from: FROM, to, subject: 'Ton espace membre ADSS Sénégal est prêt', html: wrap(body) });
+};
+
 // ─── 6. Affiliation rejetée ───────────────────────────────────────────────────
 export const sendAffiliationRejectedEmail = async (
     to: string,
