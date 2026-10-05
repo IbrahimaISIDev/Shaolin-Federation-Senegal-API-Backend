@@ -4,6 +4,9 @@ import { v2 as cloudinary } from 'cloudinary';
 import QRCode from 'qrcode';
 import { escapeHtml as esc } from '../utils/html';
 
+// Domaine affiché sur la carte (dérivé de FRONTEND_URL, ex: shaolin-senegal.com)
+const SITE_HOST = (process.env.FRONTEND_URL || 'https://shaolin-senegal.com').replace(/^https?:\/\//, '').replace(/\/$/, '');
+
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -259,7 +262,7 @@ const buildLicenseHTML = (data: {
     </div>
 
     <div class="footer">
-      <div class="footer-left">federation-shaolin-senegal.sn</div>
+      <div class="footer-left">${esc(SITE_HOST)}</div>
       <div class="status-badge">✓ Licence active</div>
       <div class="validity">Saison ${data.annee}</div>
     </div>
