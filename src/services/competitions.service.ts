@@ -78,6 +78,23 @@ export const inscrireCompetition = async (memberId: number, competitionId: numbe
     const competition = await prisma.competition.findUnique({ where: { id: competitionId, isPublished: true } });
     if (!competition) throw { status: 404, message: 'Compétition introuvable', code: 'NOT_FOUND' };
 
+    const now = new Date();
+    if (competition.dateDebut <= now) {
+        throw { status: 400, message: 'Les inscriptions sont closes : la compétition a déjà commencé', code: 'REGISTRATION_CLOSED' };
+    }
+
+    // Seuls les licenciés à jour peuvent s'inscrire
+    const activeLicense = await prisma.license.findFirst({
+        where: {
+            memberId,
+            status: 'ACTIVE',
+            OR: [{ dateFin: null }, { dateFin: { gte: now } }],
+        },
+    });
+    if (!activeLicense) {
+        throw { status: 403, message: 'Une licence active est requise pour s\'inscrire à une compétition', code: 'LICENSE_REQUIRED' };
+    }
+
     const existing = await prisma.inscription.findUnique({
         where: { memberId_competitionId: { memberId, competitionId } },
     });

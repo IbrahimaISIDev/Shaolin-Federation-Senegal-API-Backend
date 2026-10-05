@@ -59,8 +59,12 @@ export const getPublic = async (req: Request, res: Response): Promise<void> => {
 export const inscrire = async (req: Request, res: Response): Promise<void> => {
     try {
         const { categorie } = req.body;
+        if (!req.user!.memberId) {
+            res.status(403).json({ error: 'Inscription réservée aux membres licenciés', code: 'MEMBER_REQUIRED' });
+            return;
+        }
         const inscription = await inscrireCompetition(
-            req.user!.memberId!,
+            req.user!.memberId,
             parseInt(req.params.id as string),
             categorie
         );
