@@ -1,4 +1,5 @@
 import axios from 'axios';
+import crypto from 'crypto';
 
 const WAVE_API_URL = 'https://api.wave.com/v1';
 const WAVE_API_KEY = process.env.WAVE_API_KEY ?? '';
@@ -69,10 +70,32 @@ export async function getCheckoutSession(sessionId: string): Promise<WaveCheckou
 }
 
 /**
- * Vérifie la signature du webhook Wave.
- * Wave envoie le header: Wave-Signature: <secret>
+ * Vérifie la signature d'un webhook Wave (méthode « signing secret ») :
+ *   Wave-Signature: t=<timestamp unix>,v1=<hmac>[,v1=<hmac>…]
+ *   hmac = HMAC-SHA256(secret, timestamp + corps brut de la requête)
+ * Refuse si le secret n'est pas configuré, si aucune signature ne correspond,
+ * ou si l'horodatage a plus de 5 minutes (rejeu).
+ * Doc : https://docs.wave.com/webhook
  */
-export function verifyWebhookSignature(receivedSecret: string): boolean {
-  if (!WAVE_WEBHOOK_SECRET) return true; // en dev sans secret configuré
-  return receivedSecret === WAVE_WEBHOOK_SECRET;
+export function verifyWebhookSignature(header: string | undefined, rawBody: Buffer | undefined): boolean {
+  if (!WAVE_WEBHOOK_SECRET || !header || !rawBody) return false;
+
+  const parts = header.split(',').map((p) => p.trim().split('='));
+  const timestamp = parts.find(([k]) => k === 't')?.[1];
+  const signatures = parts.filter(([k]) => k === 'v1').map(([, v]) => v);
+  if (!timestamp || signatures.length === 0) return false;
+
+  const ageSeconds = Math.abs(Date.now() / 1000 - Number(timestamp));
+  if (!Number.isFinite(ageSeconds) || ageSeconds > 5 * 60) return false;
+
+  const expected = crypto
+    .createHmac('sha256', WAVE_WEBHOOK_SECRET)
+    .update(timestamp + rawBody.toString('utf8'))
+    .digest('hex');
+
+  return signatures.some((sig) => {
+    const a = Buffer.from(sig ?? '', 'utf8');
+    const b = Buffer.from(expected, 'utf8');
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+  });
 }

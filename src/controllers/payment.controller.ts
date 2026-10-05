@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import {
   createCheckoutSession,
   getCheckoutSession,
@@ -15,7 +15,6 @@ import {
 import { sendAffiliationReceivedEmail } from '../services/email.service';
 import { isValidDemandeToken, signDemandeToken } from '../services/affiliation-token';
 
-const prisma = new PrismaClient();
 
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000';
 const BACKEND_URL  = process.env.BACKEND_URL  ?? 'http://localhost:4000';
@@ -100,19 +99,33 @@ export const initiateWavePayment = async (req: Request, res: Response): Promise<
  * POST /api/payments/wave/webhook
  */
 export const waveWebhook = async (req: Request, res: Response): Promise<void> => {
-  const signature = req.headers['wave-signature'] as string ?? '';
-  if (!verifyWebhookSignature(signature)) { res.status(401).json({ error: 'Signature invalide' }); return; }
-
-  const payload = req.body as WaveWebhookPayload;
-  if (payload.type === 'checkout.session.completed' && payload.data.payment_status === 'succeeded') {
-    const demande = await prisma.affiliationDemande.findUnique({
-      where: { waveCheckoutId: payload.data.id },
-    });
-    if (demande?.status === 'PENDING_PAYMENT') {
-      await confirmPayment(demande.id, 'WAVE');
-    }
+  const rawBody = (req as Request & { rawBody?: Buffer }).rawBody;
+  if (!verifyWebhookSignature(req.headers['wave-signature'] as string | undefined, rawBody)) {
+    res.status(401).json({ error: 'Signature invalide' });
+    return;
   }
-  res.status(200).json({ received: true });
+
+  try {
+    const payload = req.body as WaveWebhookPayload;
+    if (payload.type === 'checkout.session.completed' && payload.data?.id) {
+      const demande = await prisma.affiliationDemande.findUnique({
+        where: { waveCheckoutId: payload.data.id },
+      });
+      if (demande?.status === 'PENDING_PAYMENT') {
+        // Source de vérité : l'API Wave, pas le contenu de la notification
+        const session = await getCheckoutSession(payload.data.id);
+        if (session.payment_status === 'succeeded' && Number(session.amount) >= demande.montant) {
+          await confirmPayment(demande.id, 'WAVE');
+        } else {
+          console.warn(`[Wave] webhook ignoré pour la demande ${demande.id} : statut ${session.payment_status}, montant ${session.amount}`);
+        }
+      }
+    }
+    res.status(200).json({ received: true });
+  } catch (err: any) {
+    console.error('[Wave] webhook error:', err?.response?.data ?? err.message);
+    res.status(500).json({ error: 'Erreur de traitement' }); // Wave réessaiera
+  }
 };
 
 // ─── Orange Money ─────────────────────────────────────────────────────────────
@@ -158,17 +171,27 @@ export const initiateOmPayment = async (req: Request, res: Response): Promise<vo
  * Notification Orange Money (notif_url)
  */
 export const omWebhook = async (req: Request, res: Response): Promise<void> => {
-  const payload = req.body as OmWebhookPayload;
-
-  if (payload.status === 'SUCCESS' && payload.order_id) {
-    const demande = await prisma.affiliationDemande.findUnique({
-      where: { omOrderId: payload.order_id },
-    });
-    if (demande?.status === 'PENDING_PAYMENT') {
-      await confirmPayment(demande.id, 'ORANGE_MONEY');
+  // La notification Orange Money n'est pas signée : on ne s'y fie jamais.
+  // Elle sert seulement de déclencheur ; le statut est revérifié auprès de
+  // l'API Orange Money avant toute confirmation.
+  try {
+    const payload = req.body as OmWebhookPayload;
+    if (payload?.order_id) {
+      const demande = await prisma.affiliationDemande.findUnique({
+        where: { omOrderId: String(payload.order_id) },
+      });
+      if (demande?.status === 'PENDING_PAYMENT') {
+        const status = await getOmPaymentStatus(demande.omOrderId!);
+        if (status.status === 'SUCCESS' && (status.amount == null || Number(status.amount) >= demande.montant)) {
+          await confirmPayment(demande.id, 'ORANGE_MONEY');
+        }
+      }
     }
+    res.status(200).json({ received: true });
+  } catch (err: any) {
+    console.error('[OrangeMoney] webhook error:', err?.response?.data ?? err.message);
+    res.status(500).json({ error: 'Erreur de traitement' });
   }
-  res.status(200).json({ received: true });
 };
 
 // ─── Status unifié ────────────────────────────────────────────────────────────

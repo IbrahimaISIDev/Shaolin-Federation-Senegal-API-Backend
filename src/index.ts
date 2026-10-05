@@ -44,7 +44,10 @@ app.use(cors({
   credentials: true,
 }));
 app.use(morgan('dev'));
-app.use(express.json());
+// Corps brut conservé : nécessaire à la vérification de signature des webhooks
+app.use(express.json({
+  verify: (req, _res, buf) => { (req as express.Request & { rawBody?: Buffer }).rawBody = buf; },
+}));
 app.use(cookieParser()); // lecture des cookies
 
 // Rate limiting global (large) — les limites strictes sont posées route par
