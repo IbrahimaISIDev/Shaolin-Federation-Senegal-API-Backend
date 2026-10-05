@@ -1,12 +1,12 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { PrismaClient, Prisma, AffiliationType, AffiliationStatus, Sexe } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { sendAffiliationApprovedEmail, sendAffiliationRejectedEmail, sendAffiliationReceivedEmail } from './email.service';
 import { generateLicense, activateLicense } from './licenses.service';
 import { generateLicensePDF } from './pdf.service';
 import { isValidDemandeToken } from './affiliation-token';
 
-const prisma = new PrismaClient();
 
 const TYPE_PREFIX: Record<AffiliationType, string> = {
   CLUB: '001',

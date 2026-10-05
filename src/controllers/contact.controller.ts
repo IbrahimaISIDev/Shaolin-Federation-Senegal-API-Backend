@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { sendContactNotificationEmail } from '../services/email.service';
 
-const prisma = new PrismaClient();
 
 const ContactSchema = z.object({
     name:    z.string().min(2).max(150),

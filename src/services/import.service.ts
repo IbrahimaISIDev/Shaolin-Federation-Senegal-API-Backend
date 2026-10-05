@@ -5,11 +5,10 @@
 // ============================================================
 import * as XLSX from 'xlsx';
 import bcrypt from 'bcryptjs';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { generateLicense, activateLicense } from './licenses.service';
 import { sendMemberImportedEmail } from './email.service';
 
-const prisma = new PrismaClient();
 
 export interface ImportRowError {
   row: number;

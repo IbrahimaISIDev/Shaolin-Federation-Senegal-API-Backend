@@ -2,8 +2,7 @@
 // SERVICE — admin.actualites.service.ts
 // CRUD complet des actualités pour l'admin
 // ============================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 function toSlug(titre: string): string {
     return titre

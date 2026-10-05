@@ -2,8 +2,7 @@
 // SERVICE — admin.members.service.ts
 // Gestion CRUD des membres par un administrateur
 // ============================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export const listMembersAdmin = async (filters: {
     search?: string;

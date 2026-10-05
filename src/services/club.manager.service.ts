@@ -2,8 +2,7 @@
 // SERVICE — club.manager.service.ts
 // Espace Gestionnaire de Club
 // ============================================================
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 // ─── Récupérer le club du gestionnaire connecté ───────────────────────────────
 export const getManagerClub = async (userId: number) => {

@@ -2,9 +2,8 @@
 // SERVICE — competitions.service.ts
 // Gestion publique + admin des compétitions
 // ============================================================
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { sendCompetitionRegistrationEmail } from './email.service';
-const prisma = new PrismaClient();
 
 // ── Public ─────────────────────────────────────────────────────────────────────
 

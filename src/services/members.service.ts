@@ -1,6 +1,6 @@
-import { PrismaClient, PaymentProvider } from '@prisma/client';
+import { PaymentProvider } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { renewLicense, submitRenewalProof } from './licenses.service';
-const prisma = new PrismaClient();
 
 export const getMemberProfile = async (userId: number) => {
   const member = await prisma.member.findUnique({

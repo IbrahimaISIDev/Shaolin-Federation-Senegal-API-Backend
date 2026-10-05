@@ -1,10 +1,9 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { sendPasswordResetEmail } from './email.service';
 
-const prisma = new PrismaClient();
 
 export interface LoginInput {
   email: string;

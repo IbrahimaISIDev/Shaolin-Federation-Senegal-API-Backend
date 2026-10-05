@@ -1,10 +1,9 @@
 import puppeteer from 'puppeteer';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { v2 as cloudinary } from 'cloudinary';
 import QRCode from 'qrcode';
 import { escapeHtml as esc } from '../utils/html';
 
-const prisma = new PrismaClient();
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,

@@ -1,10 +1,10 @@
 import { PrismaClient, PaymentProvider, Prisma } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import jwt from 'jsonwebtoken';
 import QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import { sendLicenseExpiringEmail } from './email.service';
 
-const prisma = new PrismaClient();
 
 // Client Prisma ou client de transaction — permet d'appeler les helpers de
 // licence depuis un prisma.$transaction(...) (ex: approbation d'affiliation).

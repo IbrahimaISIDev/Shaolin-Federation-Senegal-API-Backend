@@ -2,9 +2,8 @@
 // SERVICE — settings.service.ts
 // Paramètres généraux de l'association (ligne unique, id=1)
 // ============================================================
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 export const getSettings = async () => {
     return prisma.settings.upsert({
