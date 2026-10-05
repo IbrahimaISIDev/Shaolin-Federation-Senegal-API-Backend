@@ -1,10 +1,14 @@
-import { PrismaClient, PaymentProvider } from '@prisma/client';
+import { PrismaClient, PaymentProvider, Prisma } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
 import { sendLicenseExpiringEmail } from './email.service';
 
 const prisma = new PrismaClient();
+
+// Client Prisma ou client de transaction — permet d'appeler les helpers de
+// licence depuis un prisma.$transaction(...) (ex: approbation d'affiliation).
+type Db = PrismaClient | Prisma.TransactionClient;
 
 // Prix du renouvellement — source de vérité côté serveur (ne pas faire
 // confiance à un montant envoyé par le client). Miroir de
@@ -21,11 +25,11 @@ const generateQRToken = (licenseUuid: string, memberId: number): string => {
 };
 
 // ─── Générer une licence complète ────────────────────────────────────────────
-export const generateLicense = async (memberId: number, annee?: number) => {
+export const generateLicense = async (memberId: number, annee?: number, db: Db = prisma) => {
   const currentYear = annee || new Date().getFullYear();
 
   // Vérifier qu'il n'y a pas déjà une licence active pour cette année
-  const existing = await prisma.license.findFirst({
+  const existing = await db.license.findFirst({
     where: { memberId, annee: currentYear, status: { in: ['ACTIVE', 'PENDING'] } },
   });
   if (existing) {
@@ -38,7 +42,7 @@ export const generateLicense = async (memberId: number, annee?: number) => {
   const dateDebut = new Date();
   const dateFin = new Date(currentYear, 11, 31); // 31 décembre
 
-  const license = await prisma.license.create({
+  const license = await db.license.create({
     data: {
       memberId,
       uuid: licenseUuid,
@@ -138,12 +142,12 @@ export const verifyQRCode = async (token: string) => {
 };
 
 // ─── Activer une licence (après paiement validé) ─────────────────────────────
-export const activateLicense = async (licenseId: number) => {
-  const license = await prisma.license.findUnique({ where: { id: licenseId } });
+export const activateLicense = async (licenseId: number, db: Db = prisma) => {
+  const license = await db.license.findUnique({ where: { id: licenseId } });
   if (!license) throw { status: 404, message: 'Licence introuvable', code: 'NOT_FOUND' };
   if (license.status === 'ACTIVE') return license;
 
-  return prisma.license.update({
+  return db.license.update({
     where: { id: licenseId },
     data: { status: 'ACTIVE' },
   });

@@ -1,11 +1,22 @@
 import { Request, Response } from 'express';
 import * as affiliationService from '../services/affiliation.service';
 import { generateListPDF } from '../services/pdf.service';
+import { signDemandeToken } from '../services/affiliation-token';
+
+// Réponse publique de soumission : le strict nécessaire pour enchaîner sur le
+// paiement, plus le jeton d'accès du candidat à sa demande.
+const publicSubmission = (d: { id: number; type: string; status: string; montant: number; createdAt: Date }) => ({
+  id: d.id,
+  type: d.type,
+  status: d.status,
+  montant: d.montant,
+  accessToken: signDemandeToken(d),
+});
 
 export const submitClub = async (req: Request, res: Response) => {
   try {
     const demande = await affiliationService.submitClubAffiliation(req.body);
-    res.status(201).json({ success: true, data: demande, message: 'Demande d\'affiliation club soumise avec succès' });
+    res.status(201).json({ success: true, data: publicSubmission(demande), message: 'Demande d\'affiliation club soumise avec succès' });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -14,7 +25,7 @@ export const submitClub = async (req: Request, res: Response) => {
 export const submitMaitre = async (req: Request, res: Response) => {
   try {
     const demande = await affiliationService.submitMaitreAffiliation(req.body);
-    res.status(201).json({ success: true, data: demande, message: 'Demande d\'affiliation maître soumise avec succès' });
+    res.status(201).json({ success: true, data: publicSubmission(demande), message: 'Demande d\'affiliation maître soumise avec succès' });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -23,7 +34,7 @@ export const submitMaitre = async (req: Request, res: Response) => {
 export const submitMembre = async (req: Request, res: Response) => {
   try {
     const demande = await affiliationService.submitMembreAffiliation(req.body);
-    res.status(201).json({ success: true, data: demande, message: 'Demande d\'affiliation membre soumise avec succès' });
+    res.status(201).json({ success: true, data: publicSubmission(demande), message: 'Demande d\'affiliation membre soumise avec succès' });
   } catch (err: any) {
     res.status(400).json({ success: false, message: err.message });
   }
@@ -133,12 +144,12 @@ export const reject = async (req: Request, res: Response) => {
 export const submitPaymentProof = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id as string);
-    const { referenceManuelle, preuvePaiementUrl } = req.body;
+    const { referenceManuelle, preuvePaiementUrl, token } = req.body;
     if (!referenceManuelle || !preuvePaiementUrl) {
       return res.status(400).json({ success: false, message: 'Référence et preuve de paiement requises' });
     }
-    const updated = await affiliationService.submitPaymentProof(id, { referenceManuelle, preuvePaiementUrl });
-    res.json({ success: true, data: updated, message: 'Preuve de paiement envoyée' });
+    await affiliationService.submitPaymentProof(id, token, { referenceManuelle, preuvePaiementUrl });
+    res.json({ success: true, message: 'Preuve de paiement envoyée' });
   } catch (err: any) {
     res.status(err.status || 400).json({ success: false, message: err.message });
   }

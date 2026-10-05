@@ -13,6 +13,7 @@ import {
   OmWebhookPayload,
 } from '../services/orange-money.service';
 import { sendAffiliationReceivedEmail } from '../services/email.service';
+import { isValidDemandeToken, signDemandeToken } from '../services/affiliation-token';
 
 const prisma = new PrismaClient();
 
@@ -21,11 +22,11 @@ const BACKEND_URL  = process.env.BACKEND_URL  ?? 'http://localhost:4000';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-async function getDemandePendingPayment(demandeId: number, res: Response) {
+async function getDemandePendingPayment(demandeId: number, token: unknown, res: Response) {
   const demande = await prisma.affiliationDemande.findUnique({
     where: { id: demandeId },
   });
-  if (!demande) {
+  if (!demande || !isValidDemandeToken(demande, token)) {
     res.status(404).json({ success: false, message: 'Demande introuvable' });
     return null;
   }
@@ -59,10 +60,10 @@ async function confirmPayment(demandeId: number, provider: 'WAVE' | 'ORANGE_MONE
  */
 export const initiateWavePayment = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { demandeId } = req.body as { demandeId: number };
+    const { demandeId, token } = req.body as { demandeId: number; token?: string };
     if (!demandeId) { res.status(400).json({ success: false, message: 'demandeId requis' }); return; }
 
-    const demande = await getDemandePendingPayment(Number(demandeId), res);
+    const demande = await getDemandePendingPayment(Number(demandeId), token, res);
     if (!demande) return;
 
     // Réutiliser la session Wave si elle est encore ouverte
@@ -79,8 +80,8 @@ export const initiateWavePayment = async (req: Request, res: Response): Promise<
     const session = await createCheckoutSession({
       amount: demande.montant,
       clientReference: `affiliation-${demande.id}-${Date.now()}`,
-      successUrl: `${FRONTEND_URL}/affiliation/paiement-confirme?id=${demande.id}`,
-      errorUrl: `${FRONTEND_URL}/affiliation/paiement-echec?id=${demande.id}`,
+      successUrl: `${FRONTEND_URL}/affiliation/paiement-confirme?id=${demande.id}&t=${signDemandeToken(demande)}`,
+      errorUrl: `${FRONTEND_URL}/affiliation/paiement-echec?id=${demande.id}&t=${signDemandeToken(demande)}`,
     });
 
     await prisma.affiliationDemande.update({
@@ -121,10 +122,10 @@ export const waveWebhook = async (req: Request, res: Response): Promise<void> =>
  */
 export const initiateOmPayment = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { demandeId } = req.body as { demandeId: number };
+    const { demandeId, token } = req.body as { demandeId: number; token?: string };
     if (!demandeId) { res.status(400).json({ success: false, message: 'demandeId requis' }); return; }
 
-    const demande = await getDemandePendingPayment(Number(demandeId), res);
+    const demande = await getDemandePendingPayment(Number(demandeId), token, res);
     if (!demande) return;
 
     const orderId = generateOmOrderId(demande.id);
@@ -132,8 +133,8 @@ export const initiateOmPayment = async (req: Request, res: Response): Promise<vo
     const session = await createOmPayment({
       amount: demande.montant,
       orderId,
-      returnUrl: `${FRONTEND_URL}/affiliation/paiement-confirme?id=${demande.id}`,
-      cancelUrl: `${FRONTEND_URL}/affiliation/paiement-echec?id=${demande.id}`,
+      returnUrl: `${FRONTEND_URL}/affiliation/paiement-confirme?id=${demande.id}&t=${signDemandeToken(demande)}`,
+      cancelUrl: `${FRONTEND_URL}/affiliation/paiement-echec?id=${demande.id}&t=${signDemandeToken(demande)}`,
       notifUrl: `${BACKEND_URL}/api/payments/om/webhook`,
     });
 
@@ -183,13 +184,17 @@ export const checkPaymentStatus = async (req: Request, res: Response): Promise<v
     const demande = await prisma.affiliationDemande.findUnique({
       where: { id: demandeId },
       select: {
-        id: true, status: true, paidAt: true, type: true,
+        id: true, status: true, paidAt: true, type: true, createdAt: true,
         prenom: true, nom: true, montant: true,
         paymentProvider: true, waveCheckoutId: true, omOrderId: true,
       },
     });
 
-    if (!demande) { res.status(404).json({ success: false, message: 'Demande introuvable' }); return; }
+    // Données personnelles : réservé au candidat (jeton remis à la soumission)
+    if (!demande || !isValidDemandeToken(demande, req.query.t)) {
+      res.status(404).json({ success: false, message: 'Demande introuvable ou lien invalide' });
+      return;
+    }
 
     // Si toujours PENDING_PAYMENT, interroger le provider pour être sûr
     if (demande.status === 'PENDING_PAYMENT') {

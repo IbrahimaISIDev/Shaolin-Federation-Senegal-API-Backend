@@ -1,7 +1,10 @@
-import { PrismaClient, AffiliationType, AffiliationStatus, Sexe } from '@prisma/client';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+import { PrismaClient, Prisma, AffiliationType, AffiliationStatus, Sexe } from '@prisma/client';
 import { sendAffiliationApprovedEmail, sendAffiliationRejectedEmail, sendAffiliationReceivedEmail } from './email.service';
 import { generateLicense, activateLicense } from './licenses.service';
 import { generateLicensePDF } from './pdf.service';
+import { isValidDemandeToken } from './affiliation-token';
 
 const prisma = new PrismaClient();
 
@@ -17,12 +20,15 @@ const MONTANTS: Record<AffiliationType, number> = {
   MEMBRE: 5300,
 };
 
-async function generateCode(type: AffiliationType): Promise<string> {
+async function generateCode(
+  type: AffiliationType,
+  db: PrismaClient | Prisma.TransactionClient = prisma
+): Promise<string> {
   const prefix = TYPE_PREFIX[type];
   const year = new Date().getFullYear();
   const pattern = `${prefix}-${year}-`;
 
-  const last = await prisma.affiliationDemande.findFirst({
+  const last = await db.affiliationDemande.findFirst({
     where: { type, code: { startsWith: pattern } },
     orderBy: { code: 'desc' },
     select: { code: true },
@@ -255,30 +261,52 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
   if (!demande) throw new Error('Demande introuvable');
   if (demande.status !== 'PENDING') throw new Error('Cette demande a déjà été traitée');
 
-  const code = await generateCode(demande.type);
   const donnees = demande.donneesSpecifiques as Record<string, any> ?? {};
+  const isPerson = demande.type === 'MAITRE' || demande.type === 'MEMBRE';
 
-  // Update demande
-  const updated = await prisma.affiliationDemande.update({
-    where: { id },
-    data: {
-      status: 'APPROVED',
-      code,
-      adminNote,
-      approvedById: adminId,
-      approvedAt: new Date(),
-    },
-  });
+  // Vérifications préalables — avant toute écriture, pour ne jamais laisser
+  // une demande APPROVED sans le club / compte qui devait l'accompagner.
+  if (demande.type === 'CLUB' && !demande.regionId) {
+    throw new Error('Région manquante : impossible de créer le club. Corrigez la demande avant de l\'approuver.');
+  }
+  if (isPerson) {
+    if (!demande.clubId) throw new Error('Club manquant : impossible de créer le compte membre.');
+    const existingUser = await prisma.user.findUnique({ where: { email: demande.email } });
+    if (existingUser) {
+      throw new Error(`Un compte existe déjà avec l'email ${demande.email}. Rejetez la demande ou modifiez le compte existant.`);
+    }
+  }
 
-  // Type-specific actions on approval
-  if (demande.type === 'CLUB') {
-    // Create the club in the DB
-    if (demande.regionId) {
-      await prisma.club.create({
+  // Hash hors transaction (bcrypt est lent, la transaction doit rester courte)
+  const tempPassword = isPerson ? crypto.randomBytes(9).toString('base64url') : '';
+  const hashedPassword = isPerson ? await bcrypt.hash(tempPassword, 10) : '';
+
+  // Tout ou rien : statut + club/compte + licence
+  const { updated, code, licenseId, userId } = await prisma.$transaction(async (tx) => {
+    const code = await generateCode(demande.type, tx);
+
+    // Garde contre une double approbation simultanée
+    const { count } = await tx.affiliationDemande.updateMany({
+      where: { id, status: 'PENDING' },
+      data: {
+        status: 'APPROVED',
+        code,
+        adminNote,
+        approvedById: adminId,
+        approvedAt: new Date(),
+      },
+    });
+    if (count === 0) throw new Error('Cette demande a déjà été traitée');
+
+    let licenseId: number | undefined;
+    let userId: number | undefined;
+
+    if (demande.type === 'CLUB') {
+      await tx.club.create({
         data: {
           nom: donnees.nomClub ?? `${demande.prenom} ${demande.nom} Club`,
           code,
-          regionId: demande.regionId,
+          regionId: demande.regionId!,
           ville: donnees.villeClub ?? demande.ville ?? undefined,
           telephone: donnees.telephoneClub ?? demande.telephone,
           email: donnees.emailClub ?? demande.email,
@@ -287,63 +315,61 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
           nomMaitre: `${demande.prenom} ${demande.nom}`,
         },
       });
-    }
-    sendAffiliationApprovedEmail(demande.email, `${demande.prenom} ${demande.nom}`, 'CLUB', code)
-      .catch((e) => console.error('[email] sendAffiliationApprovedEmail (CLUB) failed:', e.message));
-  } else if (demande.type === 'MAITRE' || demande.type === 'MEMBRE') {
-    // Create a user account and member record
-    const tempPassword = Math.random().toString(36).slice(2, 10);
-    const bcrypt = await import('bcryptjs');
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-
-    const role = demande.type === 'MAITRE' ? 'CLUB_MANAGER' : 'MEMBER';
-
-    const clubId = demande.clubId;
-    if (!clubId) throw new Error('clubId requis pour MAITRE/MEMBRE');
-
-    const newUser = await prisma.user.create({
-      data: {
-        email: demande.email,
-        phone: demande.telephone,
-        password: hashedPassword,
-        role,
-        member: {
-          create: {
-            prenom: demande.prenom,
-            nom: demande.nom,
-            dateNaissance: demande.dateNaissance ?? undefined,
-            sexe: demande.sexe ?? undefined,
-            photoUrl: demande.photoUrl ?? undefined,
-            adresse: demande.adresse ?? undefined,
-            nationalite: demande.nationalite ?? undefined,
-            groupeSanguin: donnees.groupeSanguin ?? undefined,
-            contactUrgenceNom: donnees.contactUrgenceNom ?? undefined,
-            contactUrgencePhone: donnees.contactUrgencePhone ?? undefined,
-            discipline: donnees.discipline ?? donnees.specialite ?? undefined,
-            grade: donnees.gradeJi ?? donnees.gradeActuel ?? undefined,
-            clubId,
+    } else {
+      const newUser = await tx.user.create({
+        data: {
+          email: demande.email,
+          phone: demande.telephone,
+          password: hashedPassword,
+          role: demande.type === 'MAITRE' ? 'CLUB_MANAGER' : 'MEMBER',
+          member: {
+            create: {
+              prenom: demande.prenom,
+              nom: demande.nom,
+              dateNaissance: demande.dateNaissance ?? undefined,
+              sexe: demande.sexe ?? undefined,
+              photoUrl: demande.photoUrl ?? undefined,
+              adresse: demande.adresse ?? undefined,
+              nationalite: demande.nationalite ?? undefined,
+              groupeSanguin: donnees.groupeSanguin ?? undefined,
+              contactUrgenceNom: donnees.contactUrgenceNom ?? undefined,
+              contactUrgencePhone: donnees.contactUrgencePhone ?? undefined,
+              discipline: donnees.discipline ?? donnees.specialite ?? undefined,
+              grade: donnees.gradeJi ?? donnees.gradeActuel ?? undefined,
+              clubId: demande.clubId!,
+            },
           },
         },
-      },
-      include: { member: { select: { id: true } } },
-    });
+        include: { member: { select: { id: true } } },
+      });
+      userId = newUser.id;
 
-    // Créer et activer immédiatement la licence — le paiement est déjà confirmé
-    if (newUser.member) {
-      const license = await generateLicense(newUser.member.id);
-      await activateLicense(license.id);
-      // Génération du PDF en arrière-plan — l'approbation ne doit pas échouer si Puppeteer est lent
-      generateLicensePDF(license.id, newUser.id).catch(() => {});
+      // Licence créée et activée immédiatement — le paiement est déjà confirmé
+      if (newUser.member) {
+        const license = await generateLicense(newUser.member.id, undefined, tx);
+        await activateLicense(license.id, tx);
+        licenseId = license.id;
+      }
     }
 
-    sendAffiliationApprovedEmail(
-      demande.email,
-      `${demande.prenom} ${demande.nom}`,
-      demande.type,
-      code,
-      { email: demande.email, password: tempPassword }
-    ).catch((e) => console.error('[email] sendAffiliationApprovedEmail failed:', e.message));
+    const updated = await tx.affiliationDemande.findUniqueOrThrow({ where: { id } });
+    return { updated, code, licenseId, userId };
+  }, { timeout: 20000 });
+
+  // Effets de bord après commit uniquement
+  if (licenseId && userId) {
+    // Génération du PDF en arrière-plan — l'approbation ne doit pas échouer si Puppeteer est lent
+    generateLicensePDF(licenseId, userId)
+      .catch((e) => console.error('[pdf] generateLicensePDF (approbation) failed:', e?.message ?? e));
   }
+
+  sendAffiliationApprovedEmail(
+    demande.email,
+    `${demande.prenom} ${demande.nom}`,
+    demande.type,
+    code,
+    isPerson ? { email: demande.email, password: tempPassword } : undefined
+  ).catch((e) => console.error('[email] sendAffiliationApprovedEmail failed:', e.message));
 
   return updated;
 }
@@ -375,10 +401,20 @@ export async function rejectAffiliation(id: number, adminId: number, motifRejet:
 
 export async function submitPaymentProof(
   id: number,
+  token: unknown,
   data: { referenceManuelle: string; preuvePaiementUrl: string }
 ) {
   const demande = await prisma.affiliationDemande.findUnique({ where: { id } });
-  if (!demande) throw { status: 404, message: 'Demande introuvable' };
+  // Même réponse si la demande n'existe pas ou si le jeton est faux :
+  // on ne révèle pas quels ids existent.
+  if (!demande || !isValidDemandeToken(demande, token)) {
+    throw { status: 404, message: 'Demande introuvable ou lien invalide' };
+  }
+  // La preuve doit venir de notre propre upload Cloudinary — pas d'URL arbitraire
+  // (lien piégé) que l'admin ouvrirait ensuite.
+  if (!data.preuvePaiementUrl.startsWith(`https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/`)) {
+    throw { status: 400, message: 'Preuve de paiement invalide' };
+  }
   if (demande.status !== 'PENDING_PAYMENT') {
     throw { status: 400, message: 'Cette demande n\'est plus en attente de paiement' };
   }
