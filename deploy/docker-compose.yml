@@ -1,0 +1,46 @@
+# Orchestration de production (VPS) — copie de référence versionnée.
+# Sur le serveur, ce fichier vit dans ~/shaolin/ à côté de :
+#   frontend/  (clone du dépôt frontend)    backend/  (clone de ce dépôt)
+#   Caddyfile  (voir deploy/Caddyfile)      .env      (voir deploy/.env.example)
+services:
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Doit inclure /api : le client du frontend appelle ${API}/auth/login, etc.
+        NEXT_PUBLIC_API_URL: https://api.shaolin-senegal.com/api
+        NEXT_PUBLIC_SITE_URL: https://shaolin-senegal.com
+    restart: unless-stopped
+    expose:
+      - "3000"
+    networks: [web]
+
+  backend:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    restart: unless-stopped
+    expose:
+      - "4000"
+    networks: [web]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [frontend, backend]
+    networks: [web]
+
+networks:
+  web:
+
+volumes:
+  caddy_data:
+  caddy_config:

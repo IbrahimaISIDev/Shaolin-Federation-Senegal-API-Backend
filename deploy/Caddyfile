@@ -1,0 +1,14 @@
+# Caddy — HTTPS automatique (Let's Encrypt), seul service exposé sur 80/443.
+
+shaolin-senegal.com {
+    reverse_proxy frontend:3000
+}
+
+# Une seule adresse canonique pour le site (évite le contenu dupliqué en SEO)
+www.shaolin-senegal.com {
+    redir https://shaolin-senegal.com{uri} permanent
+}
+
+api.shaolin-senegal.com {
+    reverse_proxy backend:4000
+}
