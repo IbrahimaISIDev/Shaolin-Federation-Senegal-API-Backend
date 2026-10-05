@@ -3,9 +3,32 @@ name: Deploy Backend
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
+  # Vérification avant tout déploiement : un code qui ne compile pas
+  # n'atteint jamais le serveur.
+  check:
+    runs-on: ubuntu-latest
+    env:
+      PUPPETEER_SKIP_DOWNLOAD: 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma generate
+      - name: Compilation TypeScript
+        run: npm run build
+
   deploy:
+    needs: check
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     steps:
