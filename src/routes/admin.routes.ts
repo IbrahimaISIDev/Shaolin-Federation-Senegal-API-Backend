@@ -44,7 +44,7 @@ import {
 } from '../controllers/competitions.controller';
 
 // Admin — Stats
-import { stats } from '../controllers/admin.stats.controller';
+import { stats, notifications } from '../controllers/admin.stats.controller';
 
 // Admin — Renouvellements de licence
 import { listRenewals, confirmRenewal, rejectRenewal } from '../controllers/admin.renewals.controller';
@@ -60,6 +60,8 @@ router.use(requireAuth, requireRole('ADMIN'));
 // ── Stats ─────────────────────────────────────────────────────────────────────
 // GET /api/admin/stats
 router.get('/stats', stats);
+// GET /api/admin/notifications — éléments en attente d'action
+router.get('/notifications', notifications);
 
 // ── Membres ──────────────────────────────────────────────────────────────────
 // GET  /api/admin/members?search=&club=&status=&annee=&page=&limit=

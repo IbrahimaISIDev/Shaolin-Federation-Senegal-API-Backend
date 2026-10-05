@@ -131,3 +131,31 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
         res.status(500).json({ error: err.message, code: 'SERVER_ERROR' });
     }
 };
+
+// ─── Notifications admin : ce qui attend une action ───────────────────────────
+// GET /api/admin/notifications — alimente la cloche de l'en-tête admin.
+export const notifications = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const [paymentProofs, affiliationsToReview, renewalsToVerify] = await Promise.all([
+            // Preuve de paiement envoyée, paiement à confirmer
+            prisma.affiliationDemande.count({
+                where: { status: 'PENDING_PAYMENT', referenceManuelle: { not: null } },
+            }),
+            // Paiement confirmé, demande à approuver ou rejeter
+            prisma.affiliationDemande.count({ where: { status: 'PENDING' } }),
+            // Renouvellement de licence avec preuve, à vérifier
+            prisma.payment.count({ where: { status: 'PENDING', transactionRef: { not: null } } }),
+        ]);
+
+        res.json({
+            data: {
+                paymentProofs,
+                affiliationsToReview,
+                renewalsToVerify,
+                total: paymentProofs + affiliationsToReview + renewalsToVerify,
+            },
+        });
+    } catch (err: any) {
+        res.status(500).json({ error: err.message, code: 'SERVER_ERROR' });
+    }
+};
