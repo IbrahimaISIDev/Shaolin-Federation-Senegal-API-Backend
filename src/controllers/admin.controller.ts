@@ -5,12 +5,23 @@ import {
   toggleClubStatus, deleteClub,
 } from '../services/admin.service';
 
+// Coordonnées limitées au Sénégal (avec marge) : attrape notamment
+// l'inversion latitude/longitude. null = effacer la position.
+const latitudeSchema = z.number()
+  .min(12, 'Latitude hors du Sénégal (attendue entre 12 et 17)')
+  .max(17, 'Latitude hors du Sénégal (attendue entre 12 et 17)')
+  .nullable();
+const longitudeSchema = z.number()
+  .min(-18, 'Longitude hors du Sénégal (attendue entre -18 et -11)')
+  .max(-11, 'Longitude hors du Sénégal (attendue entre -18 et -11)')
+  .nullable();
+
 const ClubSchema = z.object({
   nom: z.string().min(1).max(150),
   regionId: z.number().int().positive(),
   ville: z.string().max(100).optional(),
-  latitude: z.number().min(-90).max(90).optional(),
-  longitude: z.number().min(-180).max(180).optional(),
+  latitude: latitudeSchema.optional(),
+  longitude: longitudeSchema.optional(),
   nomMaitre: z.string().max(100).optional(),
   telephone: z.string().max(20).optional(),
   email: z.string().email().optional(),
@@ -21,6 +32,12 @@ const ClubSchema = z.object({
 const UpdateClubSchema = ClubSchema.partial().extend({
   isActive: z.boolean().optional(),
 });
+
+// Latitude et longitude vont ensemble : toutes deux renseignées, ou toutes deux absentes
+const bothOrNeither = (d: { latitude?: number | null; longitude?: number | null }) =>
+  (d.latitude === undefined) === (d.longitude === undefined) &&
+  (d.latitude === null) === (d.longitude === null);
+const COORDS_MESSAGE = { message: 'Latitude et longitude doivent être renseignées ensemble', path: ['latitude'] };
 
 export const listClubs = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -40,7 +57,7 @@ export const listClubs = async (req: Request, res: Response): Promise<void> => {
 
 export const create = async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = ClubSchema.parse(req.body);
+    const data = ClubSchema.refine(bothOrNeither, COORDS_MESSAGE).parse(req.body);
     const club = await createClub(data);
     res.status(201).json({ data: club, message: 'Club créé avec succès' });
   } catch (err: any) {
@@ -54,7 +71,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
 
 export const update = async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = UpdateClubSchema.parse(req.body);
+    const data = UpdateClubSchema.refine(bothOrNeither, COORDS_MESSAGE).parse(req.body);
     const club = await updateClub(parseInt(req.params.id as string), data);
     res.json({ data: club, message: 'Club mis à jour' });
   } catch (err: any) {

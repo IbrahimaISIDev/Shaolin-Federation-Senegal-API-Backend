@@ -50,8 +50,8 @@ export const createClub = async (data: {
   nom: string;
   regionId: number;
   ville?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: number | null;
+  longitude?: number | null;
   nomMaitre?: string;
   telephone?: string;
   email?: string;
@@ -71,8 +71,8 @@ export const updateClub = async (id: number, data: {
   nom?: string;
   regionId?: number;
   ville?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude?: number | null;
+  longitude?: number | null;
   nomMaitre?: string;
   telephone?: string;
   email?: string;

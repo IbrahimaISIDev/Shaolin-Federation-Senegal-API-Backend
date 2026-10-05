@@ -77,11 +77,30 @@ export async function importClubsFromExcel(buffer: Buffer): Promise<ImportReport
       continue;
     }
 
+    // Position facultative : les deux colonnes ensemble, situées au Sénégal
+    const latRaw = String(row['Latitude'] ?? '').trim().replace(',', '.');
+    const lngRaw = String(row['Longitude'] ?? '').trim().replace(',', '.');
+    let latitude: number | undefined;
+    let longitude: number | undefined;
+    if (latRaw || lngRaw) {
+      const lat = Number(latRaw);
+      const lng = Number(lngRaw);
+      if (!latRaw || !lngRaw || !Number.isFinite(lat) || !Number.isFinite(lng)
+          || lat < 12 || lat > 17 || lng < -18 || lng > -11) {
+        report.errors.push({ row: rowNum, message: `Position invalide (latitude ${latRaw || '?'}, longitude ${lngRaw || '?'}) : attendue au Sénégal, ex. 14.69 / -17.44` });
+        continue;
+      }
+      latitude = lat;
+      longitude = lng;
+    }
+
     try {
       await prisma.club.create({
         data: {
           nom,
           regionId: region.id,
+          latitude,
+          longitude,
           ville: String(row['Ville'] ?? '').trim() || undefined,
           telephone: String(row['Téléphone'] ?? '').trim() || undefined,
           email: String(row['Email'] ?? '').trim() || undefined,
