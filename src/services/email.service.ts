@@ -3,6 +3,7 @@
 // Emails transactionnels via Nodemailer / SMTP
 // ============================================================
 import nodemailer from 'nodemailer';
+import { escapeHtml } from '../utils/html';
 
 const transporter = nodemailer.createTransport({
     host:   process.env.SMTP_HOST  || 'smtp.gmail.com',
@@ -19,15 +20,8 @@ const SITE_URL    = process.env.FRONTEND_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = process.env.SMTP_USER || '';
 const SITE_HOST   = SITE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
-// Échappe toute donnée saisie par un utilisateur avant insertion dans le HTML
-// d'un email (sinon un nom ou un message peut injecter liens et balises).
-const esc = (value: unknown): string =>
-    String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+// Toute donnée saisie par un utilisateur est échappée avant insertion dans le HTML
+const esc = escapeHtml;
 
 // ─── Wrapper HTML commun ──────────────────────────────────────────────────────
 function wrap(body: string): string {

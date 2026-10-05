@@ -2,6 +2,7 @@ import puppeteer from 'puppeteer';
 import { PrismaClient } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
 import QRCode from 'qrcode';
+import { escapeHtml as esc } from '../utils/html';
 
 const prisma = new PrismaClient();
 
@@ -220,31 +221,31 @@ const buildLicenseHTML = (data: {
     <div class="body">
       <div class="photo-section">
         ${data.photoUrl
-          ? `<img src="${data.photoUrl}" class="photo" alt="photo"/>`
-          : `<div class="photo-placeholder">${data.prenom[0]}${data.nom[0]}</div>`
+          ? `<img src="${esc(data.photoUrl)}" class="photo" alt="photo"/>`
+          : `<div class="photo-placeholder">${esc(data.prenom.charAt(0))}${esc(data.nom.charAt(0))}</div>`
         }
       </div>
 
       <div class="info-section">
-        <div class="member-name">${data.prenom.toUpperCase()} ${data.nom.toUpperCase()}</div>
+        <div class="member-name">${esc(data.prenom.toUpperCase())} ${esc(data.nom.toUpperCase())}</div>
         <div class="divider"></div>
         <div class="info-row">
           <span class="info-label">Club</span>
-          <span class="info-value">${data.club}</span>
+          <span class="info-value">${esc(data.club)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Région</span>
-          <span class="info-value">${data.region}</span>
+          <span class="info-value">${esc(data.region)}</span>
         </div>
         ${data.grade ? `
         <div class="info-row">
           <span class="info-label">Grade</span>
-          <span class="info-value">${data.grade}</span>
+          <span class="info-value">${esc(data.grade)}</span>
         </div>` : ''}
         ${data.discipline ? `
         <div class="info-row">
           <span class="info-label">Discipline</span>
-          <span class="info-value">${data.discipline}</span>
+          <span class="info-value">${esc(data.discipline)}</span>
         </div>` : ''}
         <div class="info-row">
           <span class="info-label">Validité</span>
@@ -315,7 +316,9 @@ export const generateLicensePDF = async (licenseId: number, userId: number): Pro
     annee: license.annee,
     dateFin,
     uuid: license.uuid,
-    photoUrl: member.photoUrl || undefined,
+    // Seules les photos hébergées sur notre Cloudinary sont chargées par le
+    // navigateur serveur (pas d'URL arbitraire saisie dans le profil)
+    photoUrl: member.photoUrl?.startsWith('https://res.cloudinary.com/') ? member.photoUrl : undefined,
     qrDataUrl,
     numeroLicence,
   });
@@ -328,6 +331,7 @@ export const generateLicensePDF = async (licenseId: number, userId: number): Pro
 
   try {
     const page = await browser.newPage();
+    await page.setJavaScriptEnabled(false); // gabarits statiques : aucun script à exécuter
     await page.setContent(html, { waitUntil: 'networkidle0' });
     await page.setViewport({ width: 856, height: 540 });
 
@@ -391,19 +395,19 @@ const buildListHTML = (
 </head>
 <body>
   <div class="header">
-    <h1>ADSS Sénégal — ${title}</h1>
+    <h1>ADSS Sénégal — ${esc(title)}</h1>
     <div class="meta">
       Généré le ${new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}<br/>
       ${rows.length} résultat${rows.length > 1 ? 's' : ''}
     </div>
   </div>
   <table>
-    <thead><tr>${columns.map((c) => `<th>${c.label}</th>`).join('')}</tr></thead>
+    <thead><tr>${columns.map((c) => `<th>${esc(c.label)}</th>`).join('')}</tr></thead>
     <tbody>
       ${rows
         .map(
           (row) =>
-            `<tr>${columns.map((c) => `<td>${row[c.key] ?? '—'}</td>`).join('')}</tr>`
+            `<tr>${columns.map((c) => `<td>${esc(row[c.key] ?? '—')}</td>`).join('')}</tr>`
         )
         .join('')}
     </tbody>
@@ -427,6 +431,7 @@ export const generateListPDF = async (
 
   try {
     const page = await browser.newPage();
+    await page.setJavaScriptEnabled(false); // gabarits statiques : aucun script à exécuter
     await page.setContent(html, { waitUntil: 'networkidle0' });
     const pdfBuffer = await page.pdf({
       format: 'A4',
