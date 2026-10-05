@@ -17,6 +17,17 @@ const transporter = nodemailer.createTransport({
 const FROM        = `"ADSS Sénégal" <${process.env.SMTP_USER}>`;
 const SITE_URL    = process.env.FRONTEND_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = process.env.SMTP_USER || '';
+const SITE_HOST   = SITE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+// Échappe toute donnée saisie par un utilisateur avant insertion dans le HTML
+// d'un email (sinon un nom ou un message peut injecter liens et balises).
+const esc = (value: unknown): string =>
+    String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 
 // ─── Wrapper HTML commun ──────────────────────────────────────────────────────
 function wrap(body: string): string {
@@ -32,7 +43,7 @@ function wrap(body: string): string {
     <div style="padding:32px">${body}</div>
     <div style="background:#f8fafc;padding:16px;text-align:center;font-size:12px;color:#94a3b8">
       © ${new Date().getFullYear()} ADSS Sénégal · Dakar, Sénégal ·
-      <a href="${SITE_URL}" style="color:#f59e0b;text-decoration:none">shaolin-senegal.sn</a>
+      <a href="${SITE_URL}" style="color:#f59e0b;text-decoration:none">${SITE_HOST}</a>
     </div>
   </div>
 </body></html>`;
@@ -44,27 +55,12 @@ function btn(label: string, url: string): string {
     </p>`;
 }
 
-// ─── 1. Email de bienvenue ────────────────────────────────────────────────────
-export const sendWelcomeEmail = async (to: string, prenom: string) => {
-    const body = `
-      <h2 style="color:#0f172a;margin-top:0">Bienvenue, ${prenom} ! 🎉</h2>
-      <p style="color:#475569">Votre compte ADSS Sénégal a bien été créé.</p>
-      <p style="color:#475569">Votre demande d'adhésion est en cours d'examen par notre équipe.
-         Vous recevrez une confirmation dès que votre licence sera activée.</p>
-      <div style="background:#fef9ee;border-left:4px solid #f59e0b;padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
-        <p style="margin:0;color:#78350f;font-size:14px">En attendant, vous pouvez compléter votre profil et explorer les prochaines compétitions.</p>
-      </div>
-      ${btn('Accéder à mon espace', `${SITE_URL}/membre`)}`;
-
-    await transporter.sendMail({ from: FROM, to, subject: 'Bienvenue à l\'ADSS Sénégal 🥋', html: wrap(body) });
-};
-
 // ─── 2. Réinitialisation du mot de passe ─────────────────────────────────────
 export const sendPasswordResetEmail = async (to: string, prenom: string, token: string) => {
     const url  = `${SITE_URL}/reinitialiser-mot-de-passe?token=${token}`;
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Réinitialisation du mot de passe</h2>
-      <p style="color:#475569">Bonjour ${prenom},</p>
+      <p style="color:#475569">Bonjour ${esc(prenom)},</p>
       <p style="color:#475569">Vous avez demandé à réinitialiser votre mot de passe.
          Cliquez sur le bouton ci-dessous. Ce lien expire dans <strong>1 heure</strong>.</p>
       ${btn('Réinitialiser mon mot de passe', url)}
@@ -87,12 +83,12 @@ export const sendCompetitionRegistrationEmail = async (
 
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Inscription confirmée ! 🏆</h2>
-      <p style="color:#475569">Bonjour ${prenom},</p>
+      <p style="color:#475569">Bonjour ${esc(prenom)},</p>
       <p style="color:#475569">Votre inscription à la compétition suivante a bien été enregistrée :</p>
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:20px 0">
-        <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#14532d">${competition.titre}</p>
+        <p style="margin:0 0 8px;font-size:18px;font-weight:700;color:#14532d">${esc(competition.titre)}</p>
         <p style="margin:0;color:#166534;font-size:14px">📅 ${dateStr}</p>
-        ${competition.lieu ? `<p style="margin:4px 0 0;color:#166534;font-size:14px">📍 ${competition.lieu}</p>` : ''}
+        ${competition.lieu ? `<p style="margin:4px 0 0;color:#166534;font-size:14px">📍 ${esc(competition.lieu)}</p>` : ''}
       </div>
       <p style="color:#475569;font-size:14px">N'oubliez pas de vous munir de votre licence et de votre certificat médical le jour J.</p>
       ${btn('Voir mes compétitions', `${SITE_URL}/membre/competitions`)}`;
@@ -110,7 +106,7 @@ export const sendAffiliationReceivedEmail = async (
     const labels = { CLUB: 'Club', MAITRE: 'Maître', MEMBRE: 'Membre/Disciple' };
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Demande d'affiliation reçue ✅</h2>
-      <p style="color:#475569">Bonjour ${nomComplet},</p>
+      <p style="color:#475569">Bonjour ${esc(nomComplet)},</p>
       <p style="color:#475569">Votre demande d'affiliation en tant que <strong>${labels[type]}</strong> a bien été reçue et est en cours d'examen.</p>
       <div style="background:#fef9ee;border-left:4px solid #f59e0b;padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
         <p style="margin:0;color:#78350f;font-size:14px">Référence : <strong>#${demandeId}</strong></p>
@@ -132,17 +128,17 @@ export const sendAffiliationApprovedEmail = async (
     const credentialsBlock = credentials ? `
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:20px 0">
         <p style="margin:0 0 8px;font-weight:700;color:#14532d">Vos identifiants de connexion</p>
-        <p style="margin:0;color:#166534;font-size:14px">Email : <strong>${credentials.email}</strong></p>
-        <p style="margin:4px 0 0;color:#166534;font-size:14px">Mot de passe temporaire : <strong>${credentials.password}</strong></p>
+        <p style="margin:0;color:#166534;font-size:14px">Email : <strong>${esc(credentials.email)}</strong></p>
+        <p style="margin:4px 0 0;color:#166534;font-size:14px">Mot de passe temporaire : <strong>${esc(credentials.password)}</strong></p>
         <p style="margin:8px 0 0;color:#166534;font-size:13px">Veuillez changer votre mot de passe dès la première connexion.</p>
       </div>` : '';
 
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Affiliation approuvée 🎉</h2>
-      <p style="color:#475569">Bonjour ${nomComplet},</p>
+      <p style="color:#475569">Bonjour ${esc(nomComplet)},</p>
       <p style="color:#475569">Votre demande d'affiliation en tant que <strong>${labels[type]}</strong> a été <strong style="color:#16a34a">approuvée</strong>.</p>
       <div style="background:#fef9ee;border-left:4px solid #f59e0b;padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
-        <p style="margin:0;color:#78350f;font-size:14px">Code d'affiliation : <strong style="font-size:18px">${code}</strong></p>
+        <p style="margin:0;color:#78350f;font-size:14px">Code d'affiliation : <strong style="font-size:18px">${esc(code)}</strong></p>
       </div>
       ${credentialsBlock}
       ${btn('Accéder à mon espace', `${SITE_URL}/connexion`)}`;
@@ -159,12 +155,12 @@ export const sendMemberImportedEmail = async (
 ) => {
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Ton espace membre est prêt 🥋</h2>
-      <p style="color:#475569">Bonjour ${nomComplet},</p>
-      <p style="color:#475569">Un espace membre a été créé pour toi sur la plateforme de l'ADSS Sénégal, au sein du club <strong>${clubNom}</strong>. Ta licence est active.</p>
+      <p style="color:#475569">Bonjour ${esc(nomComplet)},</p>
+      <p style="color:#475569">Un espace membre a été créé pour toi sur la plateforme de l'ADSS Sénégal, au sein du club <strong>${esc(clubNom)}</strong>. Ta licence est active.</p>
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:20px;margin:20px 0">
         <p style="margin:0 0 8px;font-weight:700;color:#14532d">Vos identifiants de connexion</p>
-        <p style="margin:0;color:#166534;font-size:14px">Email : <strong>${credentials.email}</strong></p>
-        <p style="margin:4px 0 0;color:#166534;font-size:14px">Mot de passe temporaire : <strong>${credentials.password}</strong></p>
+        <p style="margin:0;color:#166534;font-size:14px">Email : <strong>${esc(credentials.email)}</strong></p>
+        <p style="margin:4px 0 0;color:#166534;font-size:14px">Mot de passe temporaire : <strong>${esc(credentials.password)}</strong></p>
         <p style="margin:8px 0 0;color:#166534;font-size:13px">Veuillez changer votre mot de passe dès la première connexion.</p>
       </div>
       ${btn('Accéder à mon espace', `${SITE_URL}/connexion`)}`;
@@ -180,10 +176,10 @@ export const sendAffiliationRejectedEmail = async (
 ) => {
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Demande d'affiliation non approuvée</h2>
-      <p style="color:#475569">Bonjour ${nomComplet},</p>
+      <p style="color:#475569">Bonjour ${esc(nomComplet)},</p>
       <p style="color:#475569">Après examen, votre demande d'affiliation n'a pas pu être approuvée.</p>
       <div style="background:#fff1f2;border-left:4px solid #ef4444;padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
-        <p style="margin:0;color:#991b1b;font-size:14px"><strong>Motif :</strong> ${motif}</p>
+        <p style="margin:0;color:#991b1b;font-size:14px"><strong>Motif :</strong> ${esc(motif)}</p>
       </div>
       <p style="color:#475569;font-size:14px">Pour toute question, n'hésitez pas à nous contacter.</p>
       ${btn('Nous contacter', `${SITE_URL}/contact`)}`;
@@ -205,7 +201,7 @@ export const sendLicenseExpiringEmail = async (
 
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Votre licence expire bientôt ⏰</h2>
-      <p style="color:#475569">Bonjour ${prenom},</p>
+      <p style="color:#475569">Bonjour ${esc(prenom)},</p>
       <p style="color:#475569">Votre licence ADSS Sénégal arrive à expiration dans <strong>${joursRestants} jour${joursRestants > 1 ? 's' : ''}</strong>, le <strong>${dateStr}</strong>.</p>
       <div style="background:${urgent ? '#fff1f2' : '#fef9ee'};border-left:4px solid ${urgent ? '#ef4444' : '#f59e0b'};padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
         <p style="margin:0;color:${urgent ? '#991b1b' : '#78350f'};font-size:14px">
@@ -237,13 +233,13 @@ export const sendContactNotificationEmail = async (contact: {
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Nouveau message de contact</h2>
       <table style="width:100%;border-collapse:collapse;font-size:14px">
-        <tr><td style="padding:8px 0;color:#64748b;width:120px">De</td><td style="padding:8px 0;font-weight:600">${contact.name}</td></tr>
-        <tr><td style="padding:8px 0;color:#64748b">Email</td><td style="padding:8px 0"><a href="mailto:${contact.email}" style="color:#f59e0b">${contact.email}</a></td></tr>
-        ${contact.phone ? `<tr><td style="padding:8px 0;color:#64748b">Téléphone</td><td style="padding:8px 0">${contact.phone}</td></tr>` : ''}
-        <tr><td style="padding:8px 0;color:#64748b">Sujet</td><td style="padding:8px 0">${contact.subject}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;width:120px">De</td><td style="padding:8px 0;font-weight:600">${esc(contact.name)}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b">Email</td><td style="padding:8px 0"><a href="mailto:${esc(contact.email)}" style="color:#f59e0b">${esc(contact.email)}</a></td></tr>
+        ${contact.phone ? `<tr><td style="padding:8px 0;color:#64748b">Téléphone</td><td style="padding:8px 0">${esc(contact.phone)}</td></tr>` : ''}
+        <tr><td style="padding:8px 0;color:#64748b">Sujet</td><td style="padding:8px 0">${esc(contact.subject)}</td></tr>
       </table>
       <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-top:16px">
-        <p style="margin:0;color:#334155;white-space:pre-wrap">${contact.message}</p>
+        <p style="margin:0;color:#334155;white-space:pre-wrap">${esc(contact.message)}</p>
       </div>
       ${btn('Voir dans l\'admin', `${SITE_URL}/admin`)}`;
 
