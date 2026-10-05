@@ -1,7 +1,6 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import {
-  registerService,
   loginService,
   refreshService,
   logoutService,
@@ -11,17 +10,6 @@ import {
 } from '../services/auth.service';
 
 // ─── Schémas de validation Zod ───────────────────────────────────────────────
-
-const RegisterSchema = z.object({
-  email: z.string().email('Email invalide'),
-  password: z.string().min(8, 'Mot de passe trop court (8 caractères min)'),
-  prenom: z.string().min(1).max(100),
-  nom: z.string().min(1).max(100),
-  phone: z.string().optional(),
-  clubId: z.number().int().positive('Club invalide'),
-  grade: z.string().optional(),
-  discipline: z.string().optional(),
-});
 
 const LoginSchema = z.object({
   email: z.string().email('Email invalide'),
@@ -39,31 +27,6 @@ const COOKIE_OPTIONS = {
 };
 
 // ─── Controllers ─────────────────────────────────────────────────────────────
-
-export const register = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const data = RegisterSchema.parse(req.body);
-    const user = await registerService(data);
-
-    res.status(201).json({
-      data: user,
-      message: 'Compte créé avec succès. Votre demande est en cours de validation.',
-    });
-  } catch (err: any) {
-    if (err.name === 'ZodError') {
-      res.status(422).json({
-        error: 'Données invalides',
-        code: 'VALIDATION_ERROR',
-        details: err.errors,
-      });
-      return;
-    }
-    res.status(err.status || 500).json({
-      error: err.message || 'Erreur serveur',
-      code: err.code || 'SERVER_ERROR',
-    });
-  }
-};
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {

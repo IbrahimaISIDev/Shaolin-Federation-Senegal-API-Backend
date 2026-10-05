@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { register, login, refresh, logout, me, changePassword, forgotPassword, resetPassword } from '../controllers/auth.controller';
+import { login, refresh, logout, me, changePassword, forgotPassword, resetPassword } from '../controllers/auth.controller';
 import { requireAuth } from '../middlewares/auth.middleware';
 
 const router = Router();
 
-// POST /api/auth/register
-router.post('/register', register);
+// Pas de route d'inscription libre : les comptes sont créés uniquement à
+// l'approbation d'une affiliation (ou par import admin), après paiement.
 
 // POST /api/auth/login
 router.post('/login', login);

@@ -2,20 +2,9 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
-import { sendWelcomeEmail, sendPasswordResetEmail } from './email.service';
+import { sendPasswordResetEmail } from './email.service';
 
 const prisma = new PrismaClient();
-
-export interface RegisterInput {
-  email: string;
-  password: string;
-  prenom: string;
-  nom: string;
-  phone?: string;
-  clubId: number;
-  grade?: string;
-  discipline?: string;
-}
 
 export interface LoginInput {
   email: string;
@@ -38,63 +27,6 @@ export const generateRefreshToken = (userId: number) => {
     process.env.JWT_REFRESH_SECRET!,
     { expiresIn: (process.env.JWT_REFRESH_EXPIRY || "7d") as any }
   );
-};
-
-// ─── Register ────────────────────────────────────────────────────────────────
-
-export const registerService = async (input: RegisterInput) => {
-  // Vérifier email unique
-  const existing = await prisma.user.findUnique({ where: { email: input.email } });
-  if (existing) {
-    throw { status: 409, message: 'Cet email est déjà utilisé', code: 'EMAIL_TAKEN' };
-  }
-
-  // Vérifier que le club existe
-  const club = await prisma.club.findUnique({ where: { id: input.clubId } });
-  if (!club) {
-    throw { status: 404, message: 'Club introuvable', code: 'CLUB_NOT_FOUND' };
-  }
-
-  // Hasher le mot de passe
-  const hashedPassword = await bcrypt.hash(input.password, 12);
-
-  // Créer user + member en transaction
-  const result = await prisma.$transaction(async (tx) => {
-    const user = await tx.user.create({
-      data: {
-        email: input.email,
-        password: hashedPassword,
-        phone: input.phone,
-        role: 'MEMBER',
-      },
-    });
-
-    const member = await tx.member.create({
-      data: {
-        userId: user.id,
-        clubId: input.clubId,
-        prenom: input.prenom,
-        nom: input.nom,
-        grade: input.grade,
-        discipline: input.discipline,
-      },
-    });
-
-    return { user, member };
-  });
-
-  // Email de bienvenue (non-bloquant)
-  sendWelcomeEmail(result.user.email, result.member.prenom)
-    .catch((e) => console.error('[email] sendWelcomeEmail failed:', e.message));
-
-  return {
-    id: result.user.id,
-    email: result.user.email,
-    role: result.user.role,
-    memberId: result.member.id,
-    prenom: result.member.prenom,
-    nom: result.member.nom,
-  };
 };
 
 // ─── Login ───────────────────────────────────────────────────────────────────
