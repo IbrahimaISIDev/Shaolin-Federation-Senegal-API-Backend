@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import authRouter from './routes/auth.routes';
 import regionsRouter from './routes/regions.routes';
@@ -20,6 +19,7 @@ import paymentRouter from './routes/payment.routes';
 import mediaRouter from './routes/media.routes';
 import settingsRouter from './routes/settings.routes';
 import { startLicenseExpiryJob } from './jobs/license-expiry.job';
+import { globalLimiter } from './middlewares/rate-limit.middleware';
 
 const app = express();
 // Derrière le reverse proxy Caddy : faire confiance au 1er proxy
@@ -47,11 +47,9 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(cookieParser()); // lecture des cookies
 
-// Rate limiting global
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-
-// Rate limiting strict sur l'auth
-app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20 }));
+// Rate limiting global (large) — les limites strictes sont posées route par
+// route : connexion, mot de passe, soumissions publiques, contact.
+app.use(globalLimiter);
 
 app.use('/api/auth', authRouter);
 app.use('/api/regions', regionsRouter);

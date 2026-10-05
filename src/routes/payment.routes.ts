@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { publicSubmissionLimiter } from '../middlewares/rate-limit.middleware';
 import {
   initiateWavePayment,
   waveWebhook,
@@ -10,11 +11,11 @@ import {
 const router = Router();
 
 // ─── Wave ────────────────────────────────────────────────────────────────────
-router.post('/wave/initiate', initiateWavePayment);
+router.post('/wave/initiate', publicSubmissionLimiter, initiateWavePayment);
 router.post('/wave/webhook', waveWebhook);
 
 // ─── Orange Money ─────────────────────────────────────────────────────────────
-router.post('/om/initiate', initiateOmPayment);
+router.post('/om/initiate', publicSubmissionLimiter, initiateOmPayment);
 router.post('/om/webhook', omWebhook);
 
 // ─── Statut unifié ────────────────────────────────────────────────────────────

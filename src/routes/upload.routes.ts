@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware';
+import { publicSubmissionLimiter } from '../middlewares/rate-limit.middleware';
 import { upload, uploadPhoto, uploadLogo, uploadImage, uploadProof } from '../controllers/upload.controller';
 import { Request, Response } from 'express';
 import { generateLicensePDF } from '../services/pdf.service';
@@ -35,6 +36,7 @@ router.post(
 // PUT /api/upload/payment-proof  — public (candidat sans compte)
 router.put(
   '/payment-proof',
+  publicSubmissionLimiter,
   upload.single('proof'),
   uploadProof
 );

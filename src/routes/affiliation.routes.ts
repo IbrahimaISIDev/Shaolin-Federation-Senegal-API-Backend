@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware';
+import { publicSubmissionLimiter } from '../middlewares/rate-limit.middleware';
 import {
   submitClub,
   submitMaitre,
@@ -16,12 +17,12 @@ import {
 const router = Router();
 
 // Public — submission (no account required)
-router.post('/club', submitClub);
-router.post('/maitre', submitMaitre);
-router.post('/membre', submitMembre);
+router.post('/club', publicSubmissionLimiter, submitClub);
+router.post('/maitre', publicSubmissionLimiter, submitMaitre);
+router.post('/membre', publicSubmissionLimiter, submitMembre);
 
 // Public — soumission de la preuve de paiement manuel (pas encore de compte)
-router.patch('/:id/payment-proof', submitPaymentProof);
+router.patch('/:id/payment-proof', publicSubmissionLimiter, submitPaymentProof);
 
 // Admin — list, detail, approve, reject, confirmation de paiement
 router.get('/', requireAuth, requireRole('ADMIN'), listAffiliations);
