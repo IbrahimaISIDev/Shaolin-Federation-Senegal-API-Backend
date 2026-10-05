@@ -93,9 +93,16 @@ export const getActiveLicense = async (userId: number) => {
   const member = await prisma.member.findUnique({ where: { userId } });
   if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
 
+  // Licence en vigueur aujourd'hui — pas une licence déjà renouvelée pour
+  // l'année suivante (ACTIVE elle aussi, mais pas encore commencée)
+  const now = new Date();
   const license = await prisma.license.findFirst({
-    where: { memberId: member.id, status: 'ACTIVE' },
-    orderBy: { createdAt: 'desc' },
+    where: {
+      memberId: member.id,
+      status: 'ACTIVE',
+      OR: [{ dateDebut: null }, { dateDebut: { lte: now } }],
+    },
+    orderBy: { annee: 'desc' },
   });
 
   return license;
