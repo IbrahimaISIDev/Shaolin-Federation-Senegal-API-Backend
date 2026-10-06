@@ -13,6 +13,15 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Multer décode le nom de fichier en Latin-1 : « Prési.jpg » arrivait en
+// « PrÃ©si.jpg ». On le relit en UTF-8 et on retire l'extension pour en
+// faire un titre lisible.
+const titleFromFilename = (name: string) => {
+  const utf8 = Buffer.from(name, 'latin1').toString('utf8');
+  const decoded = utf8.includes('\uFFFD') ? name : utf8;
+  return decoded.replace(/\.[a-z0-9]{2,5}$/i, '').slice(0, 150) || 'Photo';
+};
+
 export const uploadMedia = async (
   file: Express.Multer.File,
   userId: number,
@@ -39,7 +48,7 @@ export const uploadMedia = async (
     data: {
       url: result.secure_url,
       publicId: result.public_id,
-      title: options.title?.trim() || file.originalname,
+      title: options.title?.trim() || titleFromFilename(file.originalname),
       album: options.album?.trim() || null,
       inGallery: options.inGallery ?? false,
       mimeType: file.mimetype,
