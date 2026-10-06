@@ -18,6 +18,7 @@ import affiliationRouter from './routes/affiliation.routes';
 import paymentRouter from './routes/payment.routes';
 import mediaRouter from './routes/media.routes';
 import settingsRouter from './routes/settings.routes';
+import galleryRouter from './routes/gallery.routes';
 import { startLicenseExpiryJob } from './jobs/license-expiry.job';
 import { globalLimiter } from './middlewares/rate-limit.middleware';
 
@@ -67,6 +68,7 @@ app.use('/api/contact', contactRouter);
 app.use('/api/club', clubManagerRouter);
 app.use('/api/admin/media', mediaRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/gallery', galleryRouter);
 app.use('/api/affiliations', affiliationRouter);
 app.use('/api/payments', paymentRouter);
 

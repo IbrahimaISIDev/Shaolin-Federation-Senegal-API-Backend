@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware';
 import { upload as multerUpload } from '../controllers/upload.controller';
-import { upload, list, remove } from '../controllers/media.controller';
+import { upload, list, remove, update } from '../controllers/media.controller';
 
 const router = Router();
 
@@ -13,6 +13,9 @@ router.get('/', list);
 
 // POST /api/admin/media  (multipart, champ "file")
 router.post('/', multerUpload.single('file'), upload);
+
+// PATCH /api/admin/media/:id  { title?, album?, inGallery? }
+router.patch('/:id', update);
 
 // DELETE /api/admin/media/:id
 router.delete('/:id', remove);

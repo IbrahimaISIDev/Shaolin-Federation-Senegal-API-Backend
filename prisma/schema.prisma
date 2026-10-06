@@ -377,11 +377,15 @@ model MediaItem {
   width        Int?
   height       Int?
   uploadedById Int?
+  // Galerie publique : visible sur /galerie (et l'aperçu de l'accueil)
+  inGallery    Boolean  @default(false)
+  album        String?  @db.VarChar(100)
   createdAt    DateTime @default(now())
 
   uploadedBy User? @relation(fields: [uploadedById], references: [id])
 
   @@index([createdAt])
+  @@index([inGallery, createdAt])
   @@map("media_items")
 }
 
