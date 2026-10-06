@@ -24,7 +24,12 @@ export const generateRefreshToken = (userId: number) => {
   return jwt.sign(
     { userId },
     process.env.JWT_REFRESH_SECRET!,
-    { expiresIn: (process.env.JWT_REFRESH_EXPIRY || "7d") as any }
+    {
+      expiresIn: (process.env.JWT_REFRESH_EXPIRY || "7d") as any,
+      // Identifiant unique : sans lui, deux connexions du même compte dans la
+      // même seconde produisaient le même jeton → violation d'unicité (500).
+      jwtid: crypto.randomUUID(),
+    }
   );
 };
 
