@@ -1,7 +1,15 @@
-# Orchestration de production (VPS) — copie de référence versionnée.
-# Sur le serveur, ce fichier vit dans ~/shaolin/ à côté de :
-#   frontend/  (clone du dépôt frontend)    backend/  (clone de ce dépôt)
-#   Caddyfile  (voir deploy/Caddyfile)      .env      (voir deploy/.env.example)
+# Orchestration de production (VPS) — copie de référence, identique à
+# ~/shaolin/docker-compose.yml sur le serveur (relevé du 2026-10-06).
+#
+# Le VPS est partagé entre plusieurs projets : un Caddy CENTRAL (projet
+# « caddy », conteneur caddy-caddy-1) détient les ports 80/443 et joint
+# chaque site via le réseau Docker externe « edge ». Ce fichier ne lance
+# donc PAS de Caddy : il expose les services sur « edge » sous des alias
+# uniques (shaolin-frontend, shaolin-backend, shaolin-uptime-kuma), à
+# utiliser dans le Caddyfile central — voir deploy/Caddyfile.
+#
+# NEXT_PUBLIC_SITE_URL n'est pas passé : le Dockerfile du frontend vaut
+# https://shaolin-senegal.com par défaut.
 services:
   frontend:
     build:
@@ -9,11 +17,14 @@ services:
       args:
         # Doit inclure /api : le client du frontend appelle ${API}/auth/login, etc.
         NEXT_PUBLIC_API_URL: https://api.shaolin-senegal.com/api
-        NEXT_PUBLIC_SITE_URL: https://shaolin-senegal.com
     restart: unless-stopped
     expose:
       - "3000"
-    networks: [web]
+    networks:
+      web:
+      edge:
+        aliases:
+          - shaolin-frontend
 
   backend:
     build:
@@ -23,24 +34,30 @@ services:
     restart: unless-stopped
     expose:
       - "4000"
-    networks: [web]
+    networks:
+      web:
+      edge:
+        aliases:
+          - shaolin-backend
 
-  caddy:
-    image: caddy:2-alpine
+  # Surveillance de disponibilité — https://monitor.shaolin-senegal.com
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on: [frontend, backend]
-    networks: [web]
+      - uptime_kuma_data:/app/data
+    expose: ["3001"]
+    networks:
+      web:
+      edge:
+        aliases:
+          - shaolin-uptime-kuma
 
 networks:
   web:
+  edge:
+    external: true
+    name: edge
 
 volumes:
-  caddy_data:
-  caddy_config:
+  uptime_kuma_data:

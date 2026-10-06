@@ -1,0 +1,27 @@
+# Bloc Caddy du projet Shaolin — copie de référence.
+# Sur le VPS : /home/ibrahimadev/infra/caddy/sites/shaolin.caddy
+# (importé par le Caddy central : infra/caddy/Caddyfile → import sites/*.caddy)
+# Après modification :
+#   docker exec caddy-caddy-1 caddy validate --config /etc/caddy/Caddyfile
+#   docker exec caddy-caddy-1 caddy reload   --config /etc/caddy/Caddyfile
+#
+# Les cibles sont les alias uniques déclarés sur le réseau « edge » dans
+# docker-compose.yml (jamais « frontend » / « backend » : noms partagés
+# par d'autres projets sur ce réseau).
+
+shaolin-senegal.com {
+	reverse_proxy shaolin-frontend:3000
+}
+
+# Une seule adresse canonique (évite le contenu dupliqué pour le référencement)
+www.shaolin-senegal.com {
+	redir https://shaolin-senegal.com{uri} permanent
+}
+
+api.shaolin-senegal.com {
+	reverse_proxy shaolin-backend:4000
+}
+
+monitor.shaolin-senegal.com {
+	reverse_proxy shaolin-uptime-kuma:3001
+}
