@@ -137,7 +137,7 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
 // GET /api/admin/notifications — alimente la cloche de l'en-tête admin.
 export const notifications = async (_req: Request, res: Response): Promise<void> => {
     try {
-        const [paymentProofs, affiliationsToReview, renewalsToVerify] = await Promise.all([
+        const [paymentProofs, affiliationsToReview, renewalsToVerify, unreadMessages] = await Promise.all([
             // Preuve de paiement envoyée, paiement à confirmer
             prisma.affiliationDemande.count({
                 where: { status: 'PENDING_PAYMENT', referenceManuelle: { not: null } },
@@ -146,6 +146,8 @@ export const notifications = async (_req: Request, res: Response): Promise<void>
             prisma.affiliationDemande.count({ where: { status: 'PENDING' } }),
             // Renouvellement de licence avec preuve, à vérifier
             prisma.payment.count({ where: { status: 'PENDING', transactionRef: { not: null } } }),
+            // Messages de contact non lus
+            prisma.contactMessage.count({ where: { isRead: false } }),
         ]);
 
         res.json({
@@ -153,7 +155,8 @@ export const notifications = async (_req: Request, res: Response): Promise<void>
                 paymentProofs,
                 affiliationsToReview,
                 renewalsToVerify,
-                total: paymentProofs + affiliationsToReview + renewalsToVerify,
+                unreadMessages,
+                total: paymentProofs + affiliationsToReview + renewalsToVerify + unreadMessages,
             },
         });
     } catch (err: any) {
