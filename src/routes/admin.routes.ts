@@ -52,6 +52,9 @@ import { stats, notifications } from '../controllers/admin.stats.controller';
 // Admin — Renouvellements de licence
 import { listRenewals, confirmRenewal, rejectRenewal } from '../controllers/admin.renewals.controller';
 
+// Admin — Contenus éditoriaux (accueil, bureau)
+import { putContent, resetContent } from '../controllers/content.controller';
+
 // Admin — Messages de contact
 import { listMessages, updateMessage, deleteMessage } from '../controllers/admin.messages.controller';
 
@@ -138,6 +141,12 @@ router.get('/competitions/:id/resultats', getCompetitionResults);
 router.put('/competitions/:id/resultats', putCompetitionResults);
 // PATCH /api/admin/competitions/:id/resultats/publication — { publie: boolean }
 router.patch('/competitions/:id/resultats/publication', publishCompetitionResults);
+
+// ── Contenus éditoriaux ─────────────────────────────────────────────────────
+// PUT    /api/admin/content/:key  { data }   (home | bureau)
+router.put('/content/:key', putContent);
+// DELETE /api/admin/content/:key  — revenir au contenu par défaut
+router.delete('/content/:key', resetContent);
 
 // ── Messages de contact ─────────────────────────────────────────────────────
 // GET    /api/admin/messages?status=unread|read&search=&page=&limit=

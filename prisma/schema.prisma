@@ -40,6 +40,7 @@ model User {
   renouvellementsConfirmes Payment[]            @relation("PaymentConfirmations2")
   gradeChangesEffectuees   GradeHistory[]       @relation("GradeChangedBy")
   mediaUploads             MediaItem[]
+  contenusModifies         SiteContent[]
 
   @@index([email])
   @@map("users")
@@ -404,4 +405,18 @@ model Settings {
   updatedAt            DateTime @updatedAt
 
   @@map("settings")
+}
+
+// Contenus éditoriaux modifiables depuis l'admin (accueil, bureau…).
+// Une ligne par bloc ; `data` suit un schéma validé côté API selon la clé.
+// Absent = le site affiche son contenu par défaut.
+model SiteContent {
+  key         String   @id @db.VarChar(50)
+  data        Json
+  updatedById Int?
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation(fields: [updatedById], references: [id])
+
+  @@map("site_contents")
 }
