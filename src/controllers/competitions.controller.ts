@@ -37,13 +37,17 @@ const UpdateCompetitionSchema = CompetitionSchema.partial();
 
 export const listPublic = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { search, region, status, page = '1', limit = '20' } = req.query as any;
+        const { search, region, status, from, to, page = '1', limit = '20' } = req.query as any;
+        const fromDate = from ? new Date(from) : undefined;
+        const toDate = to ? new Date(to) : undefined;
+        const validPeriod = fromDate && toDate && !isNaN(fromDate.getTime()) && !isNaN(toDate.getTime());
         const result = await listCompetitionsPublic({
             search,
             regionCode: region,
             status,
+            ...(validPeriod ? { from: fromDate, to: toDate } : {}),
             page: parseInt(page),
-            limit: Math.min(parseInt(limit), 50),
+            limit: Math.min(parseInt(limit), validPeriod ? 200 : 50),
         });
         res.json(result);
     } catch (err: any) {

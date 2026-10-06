@@ -11,10 +11,12 @@ export const listCompetitionsPublic = async (filters: {
     search?: string;
     regionCode?: string;
     status?: 'upcoming' | 'open' | 'completed';
+    from?: Date;   // période (calendrier) : compétitions qui la chevauchent
+    to?: Date;
     page?: number;
     limit?: number;
 }) => {
-    const { search, regionCode, status, page = 1, limit = 20 } = filters;
+    const { search, regionCode, status, from, to, page = 1, limit = 20 } = filters;
     const skip = (page - 1) * limit;
     const where: any = { isPublished: true };
     const now = new Date();
@@ -38,6 +40,15 @@ export const listCompetitionsPublic = async (filters: {
     if (regionCode) {
         const region = await prisma.region.findUnique({ where: { code: regionCode.toUpperCase() } });
         if (region) where.regionId = region.id;
+    }
+
+    // Chevauchement avec [from, to] : commence avant la fin de la période et
+    // se termine (ou commence, si pas de date de fin) après son début
+    if (from && to) {
+        where.AND = [
+            { dateDebut: { lte: to } },
+            { OR: [{ dateFin: { gte: from } }, { dateFin: null, dateDebut: { gte: from } }] },
+        ];
     }
 
     const [competitions, total] = await Promise.all([
