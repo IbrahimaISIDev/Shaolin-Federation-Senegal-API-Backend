@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/prisma';
 import { generateLicense, activateLicense } from './licenses.service';
 import { sendMemberImportedEmail } from './email.service';
+import { emailEquals } from '../utils/email';
 
 
 export interface ImportRowError {
@@ -156,7 +157,7 @@ export async function importMembersFromExcel(buffer: Buffer): Promise<ImportRepo
       continue;
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
+    const existingUser = await prisma.user.findFirst({ where: emailEquals(email) });
     if (existingUser) {
       report.errors.push({ row: rowNum, message: `Email déjà utilisé : "${email}"` });
       continue;

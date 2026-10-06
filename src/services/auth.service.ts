@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { sendPasswordResetEmail } from './email.service';
+import { emailEquals } from '../utils/email';
 
 
 export interface LoginInput {
@@ -37,8 +38,8 @@ export const generateRefreshToken = (userId: number) => {
 
 export const loginService = async (input: LoginInput) => {
   // Trouver l'utilisateur
-  const user = await prisma.user.findUnique({
-    where: { email: input.email },
+  const user = await prisma.user.findFirst({
+    where: emailEquals(input.email),
     include: { member: true },
   });
 
@@ -139,8 +140,8 @@ export const logoutService = async (token: string) => {
 // ─── Mot de passe oublié ─────────────────────────────────────────────────────
 
 export const forgotPasswordService = async (email: string) => {
-  const user = await prisma.user.findUnique({
-    where: { email },
+  const user = await prisma.user.findFirst({
+    where: emailEquals(email),
     include: { member: true },
   });
   // Toujours répondre OK pour ne pas révéler si l'email existe
