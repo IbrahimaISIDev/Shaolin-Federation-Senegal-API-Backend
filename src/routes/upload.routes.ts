@@ -43,11 +43,13 @@ router.put(
 );
 
 // GET /api/upload/licenses/:id/pdf  — membre connecté
+// Renvoie l'URL du PDF (JSON) : le site l'appelle avec le jeton de session
+// puis ouvre le PDF. Une redirection ne fonctionnait pas, un nouvel onglet
+// n'envoyant pas le jeton (réponse « Token manquant »).
 router.get('/licenses/:id/pdf', requireAuth, async (req: Request, res: Response): Promise<void> => {
   try {
     const pdfUrl = await generateLicensePDF(parseInt(req.params.id as string), req.user!.userId);
-    // Redirection vers le PDF Cloudinary
-    res.redirect(pdfUrl);
+    res.json({ data: { url: pdfUrl } });
   } catch (err: any) {
     sendError(res, err);
   }
