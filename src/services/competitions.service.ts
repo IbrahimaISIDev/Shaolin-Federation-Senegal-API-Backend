@@ -3,7 +3,7 @@
 // Gestion publique + admin des compétitions
 // ============================================================
 import { prisma } from '../lib/prisma';
-import { sendCompetitionRegistrationEmail } from './email.service';
+import { sendCompetitionRegistrationEmail, sendAdminCompetitionRegistrationEmail } from './email.service';
 
 // ── Public ─────────────────────────────────────────────────────────────────────
 
@@ -113,8 +113,14 @@ export const inscrireCompetition = async (memberId: number, competitionId: numbe
     // Email de confirmation (non-bloquant)
     const member = await prisma.member.findUnique({
         where: { id: memberId },
-        include: { user: { select: { email: true } } },
+        include: { user: { select: { email: true } }, club: { select: { nom: true } } },
     });
+    if (member) {
+        sendAdminCompetitionRegistrationEmail({
+            prenom: member.prenom, nom: member.nom, club: member.club.nom,
+            competition: competition.titre, competitionId, categorie,
+        }).catch((e) => console.error('[email] sendAdminCompetitionRegistrationEmail failed:', e.message));
+    }
     if (member?.user?.email) {
         sendCompetitionRegistrationEmail(member.user.email, member.prenom, {
             titre:     competition.titre,

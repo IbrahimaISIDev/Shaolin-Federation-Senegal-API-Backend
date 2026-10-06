@@ -28,7 +28,8 @@ export const confirmRenewal = async (req: Request, res: Response): Promise<void>
 export const rejectRenewal = async (req: Request, res: Response): Promise<void> => {
     try {
         const paymentId = parseInt(req.params.paymentId as string);
-        const payment = await rejectRenewalPayment(paymentId, req.user!.userId);
+        const motif = typeof req.body?.motif === 'string' ? req.body.motif.trim().slice(0, 500) : undefined;
+        const payment = await rejectRenewalPayment(paymentId, req.user!.userId, motif || undefined);
         res.json({ data: payment, message: 'Renouvellement rejeté' });
     } catch (err: any) {
         sendError(res, err);

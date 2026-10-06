@@ -20,6 +20,7 @@ import mediaRouter from './routes/media.routes';
 import settingsRouter from './routes/settings.routes';
 import galleryRouter from './routes/gallery.routes';
 import { startLicenseExpiryJob } from './jobs/license-expiry.job';
+import { startWeeklyReportJob } from './jobs/weekly-report.job';
 import { globalLimiter } from './middlewares/rate-limit.middleware';
 
 const app = express();
@@ -105,6 +106,7 @@ app.listen(PORT, () => {
   console.log(`🥋 API Shaolin démarrée sur http://localhost:${PORT}`);
   console.log(`   ENV: ${process.env.NODE_ENV || 'development'}`);
   startLicenseExpiryJob();
+  startWeeklyReportJob();
 });
 
 

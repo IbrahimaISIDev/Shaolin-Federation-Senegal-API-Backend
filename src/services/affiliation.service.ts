@@ -2,10 +2,14 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { PrismaClient, Prisma, AffiliationType, AffiliationStatus, Sexe } from '@prisma/client';
 import { prisma } from '../lib/prisma';
-import { sendAffiliationApprovedEmail, sendAffiliationRejectedEmail, sendAffiliationReceivedEmail } from './email.service';
+import {
+  sendAffiliationApprovedEmail, sendAffiliationRejectedEmail, sendAffiliationReceivedEmail,
+  sendAdminAffiliationProofEmail,
+} from './email.service';
 import { generateLicense, activateLicense } from './licenses.service';
 import { generateLicensePDF } from './pdf.service';
 import { isValidDemandeToken } from './affiliation-token';
+import { normalizeEmail, emailEquals } from '../utils/email';
 
 
 const TYPE_PREFIX: Record<AffiliationType, string> = {
@@ -43,6 +47,15 @@ async function generateCode(
   return `${prefix}-${year}-${seq.toString().padStart(3, '0')}`;
 }
 
+// Email obligatoire et plausible, normalisé en minuscules
+function requireEmail(email: unknown): string {
+  const value = typeof email === 'string' ? normalizeEmail(email) : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    throw { status: 400, message: 'Adresse email invalide', code: 'INVALID_EMAIL' };
+  }
+  return value;
+}
+
 // ─── Submit handlers ──────────────────────────────────────────────────────────
 
 export async function submitClubAffiliation(body: {
@@ -72,7 +85,7 @@ export async function submitClubAffiliation(body: {
       montant: MONTANTS.CLUB,
       prenom: body.prenom,
       nom: body.nom,
-      email: body.email,
+      email: requireEmail(body.email),
       telephone: body.telephone,
       dateNaissance: body.dateNaissance ? new Date(body.dateNaissance) : undefined,
       sexe: body.sexe as Sexe | undefined,
@@ -123,7 +136,7 @@ export async function submitMaitreAffiliation(body: {
       montant: MONTANTS.MAITRE,
       prenom: body.prenom,
       nom: body.nom,
-      email: body.email,
+      email: requireEmail(body.email),
       telephone: body.telephone,
       dateNaissance: body.dateNaissance ? new Date(body.dateNaissance) : undefined,
       sexe: body.sexe as Sexe | undefined,
@@ -174,7 +187,7 @@ export async function submitMembreAffiliation(body: {
       montant: MONTANTS.MEMBRE,
       prenom: body.prenom,
       nom: body.nom,
-      email: body.email,
+      email: requireEmail(body.email),
       telephone: body.telephone,
       dateNaissance: body.dateNaissance ? new Date(body.dateNaissance) : undefined,
       sexe: body.sexe as Sexe | undefined,
@@ -271,7 +284,7 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
   }
   if (isPerson) {
     if (!demande.clubId) throw new Error('Club manquant : impossible de créer le compte membre.');
-    const existingUser = await prisma.user.findUnique({ where: { email: demande.email } });
+    const existingUser = await prisma.user.findFirst({ where: emailEquals(demande.email) });
     if (existingUser) {
       throw new Error(`Un compte existe déjà avec l'email ${demande.email}. Rejetez la demande ou modifiez le compte existant.`);
     }
@@ -318,7 +331,7 @@ export async function approveAffiliation(id: number, adminId: number, adminNote?
     } else {
       const newUser = await tx.user.create({
         data: {
-          email: demande.email,
+          email: normalizeEmail(demande.email),
           phone: demande.telephone,
           password: hashedPassword,
           role: demande.type === 'MAITRE' ? 'CLUB_MANAGER' : 'MEMBER',
@@ -419,13 +432,18 @@ export async function submitPaymentProof(
     throw { status: 400, message: 'Cette demande n\'est plus en attente de paiement' };
   }
 
-  return prisma.affiliationDemande.update({
+  const updated = await prisma.affiliationDemande.update({
     where: { id },
     data: {
       referenceManuelle: data.referenceManuelle,
       preuvePaiementUrl: data.preuvePaiementUrl,
     },
   });
+
+  sendAdminAffiliationProofEmail({ ...updated, referenceManuelle: data.referenceManuelle })
+    .catch((e) => console.error('[email] sendAdminAffiliationProofEmail failed:', e.message));
+
+  return updated;
 }
 
 export async function confirmAffiliationPayment(id: number, adminId: number) {

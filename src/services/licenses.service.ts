@@ -3,7 +3,19 @@ import { prisma } from '../lib/prisma';
 import jwt from 'jsonwebtoken';
 import QRCode from 'qrcode';
 import { v4 as uuidv4 } from 'uuid';
-import { sendLicenseExpiringEmail } from './email.service';
+import {
+  sendLicenseExpiringEmail, sendAdminRenewalProofEmail, sendRenewalConfirmedEmail, sendRenewalRejectedEmail,
+} from './email.service';
+
+// Membre (prénom, nom, email, club) d'une licence — pour les notifications
+const licenseOwner = (licenseId: number) =>
+  prisma.license.findUnique({
+    where: { id: licenseId },
+    select: {
+      annee: true,
+      member: { select: { prenom: true, nom: true, user: { select: { email: true } }, club: { select: { nom: true } } } },
+    },
+  });
 
 
 // Client Prisma ou client de transaction — permet d'appeler les helpers de
@@ -296,10 +308,19 @@ export const submitRenewalProof = async (
     throw { status: 400, message: 'Aucun paiement en attente pour cette licence', code: 'NO_PENDING_PAYMENT' };
   }
 
-  return prisma.payment.update({
+  const updated = await prisma.payment.update({
     where: { id: payment.id },
     data: { transactionRef: data.transactionRef, preuveUrl: data.preuveUrl },
   });
+
+  licenseOwner(licenseId)
+    .then((l) => l && sendAdminRenewalProofEmail({
+      prenom: l.member.prenom, nom: l.member.nom, club: l.member.club.nom,
+      annee: l.annee, montant: Number(updated.montant), transactionRef: data.transactionRef,
+    }))
+    .catch((e) => console.error('[email] sendAdminRenewalProofEmail failed:', e.message));
+
+  return updated;
 };
 
 // ─── Admin : renouvellements en attente de vérification ──────────────────────
@@ -338,18 +359,28 @@ export const confirmRenewalPayment = async (paymentId: number, adminId: number) 
     prisma.license.update({ where: { id: payment.licenseId }, data: { status: 'ACTIVE' } }),
   ]);
 
+  licenseOwner(payment.licenseId)
+    .then((l) => l && sendRenewalConfirmedEmail(l.member.user.email, l.member.prenom, l.annee))
+    .catch((e) => console.error('[email] sendRenewalConfirmedEmail failed:', e.message));
+
   return updatedPayment;
 };
 
-export const rejectRenewalPayment = async (paymentId: number, adminId: number) => {
+export const rejectRenewalPayment = async (paymentId: number, adminId: number, motif?: string) => {
   const payment = await prisma.payment.findUnique({ where: { id: paymentId } });
   if (!payment) throw { status: 404, message: 'Paiement introuvable', code: 'NOT_FOUND' };
   if (payment.status !== 'PENDING') {
     throw { status: 400, message: 'Ce paiement a déjà été traité', code: 'ALREADY_PROCESSED' };
   }
 
-  return prisma.payment.update({
+  const updated = await prisma.payment.update({
     where: { id: paymentId },
     data: { status: 'FAILED', confirmedById: adminId, confirmedAt: new Date() },
   });
+
+  licenseOwner(payment.licenseId)
+    .then((l) => l && sendRenewalRejectedEmail(l.member.user.email, l.member.prenom, l.annee, motif))
+    .catch((e) => console.error('[email] sendRenewalRejectedEmail failed:', e.message));
+
+  return updated;
 };

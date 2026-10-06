@@ -4,6 +4,7 @@
 // ============================================================
 import nodemailer from 'nodemailer';
 import { escapeHtml } from '../utils/html';
+import { prisma } from '../lib/prisma';
 
 const transporter = nodemailer.createTransport({
     host:   process.env.SMTP_HOST  || 'smtp.gmail.com',
@@ -222,7 +223,7 @@ export const sendContactNotificationEmail = async (contact: {
     subject: string;
     message: string;
 }) => {
-    if (!ADMIN_EMAIL) return;
+    if (!(await adminRecipient())) return;
 
     const body = `
       <h2 style="color:#0f172a;margin-top:0">Nouveau message de contact</h2>
@@ -235,13 +236,147 @@ export const sendContactNotificationEmail = async (contact: {
       <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-top:16px">
         <p style="margin:0;color:#334155;white-space:pre-wrap">${esc(contact.message)}</p>
       </div>
-      ${btn('Voir dans l\'admin', `${SITE_URL}/admin`)}`;
+      ${btn('Lire dans l\'admin', `${SITE_URL}/admin/messages`)}`;
 
     await transporter.sendMail({
         from: FROM,
-        to:   ADMIN_EMAIL,
+        to:   await adminRecipient(),
         replyTo: contact.email,
         subject: `[Contact] ${contact.subject} — ${contact.name}`,
         html: wrap(body),
     });
+};
+
+// ─── Notifications de l'administration ────────────────────────────────────────
+// Destinataire : email de contact des Paramètres, sinon le compte d'envoi SMTP.
+async function adminRecipient(): Promise<string> {
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } }).catch(() => null);
+    return settings?.contactEmail?.trim() || ADMIN_EMAIL;
+}
+
+type NotificationKey = 'notifyNewAffiliation' | 'notifyNewMember' | 'notifyCompetitions' | 'notifyNewsletter';
+
+// Envoie une notification à l'admin si l'interrupteur correspondant est activé
+// dans Paramètres → Notifications.
+async function notifyAdmin(key: NotificationKey, subject: string, body: string): Promise<void> {
+    const settings = await prisma.settings.findUnique({ where: { id: 1 } });
+    if (settings && settings[key] === false) return;
+    const to = await adminRecipient();
+    if (!to) return;
+    await transporter.sendMail({ from: FROM, to, subject, html: wrap(body) });
+}
+
+const row = (label: string, value: unknown) =>
+    `<tr><td style="padding:7px 0;color:#64748b;width:62%;border-bottom:1px solid #f1f5f9">${esc(label)}</td>`
+    + `<td style="padding:7px 0;font-weight:600;color:#0f172a;text-align:right;border-bottom:1px solid #f1f5f9">${esc(value)}</td></tr>`;
+
+// 8. Preuve de paiement d'affiliation reçue → à vérifier
+export const sendAdminAffiliationProofEmail = async (demande: {
+    id: number; type: string; prenom: string; nom: string; email: string; telephone: string;
+    montant: number; referenceManuelle: string;
+}) => {
+    const labels: Record<string, string> = { CLUB: 'Club', MAITRE: 'Maître', MEMBRE: 'Membre/Disciple' };
+    const body = `
+      <h2 style="color:#0f172a;margin-top:0">Paiement d'affiliation à vérifier 💳</h2>
+      <p style="color:#475569">Un candidat vient d'envoyer sa preuve de paiement.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        ${row('Candidat', `${demande.prenom} ${demande.nom}`)}
+        ${row('Type', labels[demande.type] ?? demande.type)}
+        ${row('Montant', `${demande.montant.toLocaleString('fr-FR')} FCFA`)}
+        ${row('Référence', demande.referenceManuelle)}
+        ${row('Contact', `${demande.telephone} · ${demande.email}`)}
+      </table>
+      ${btn('Vérifier le paiement', `${SITE_URL}/admin/affiliations`)}`;
+    await notifyAdmin('notifyNewAffiliation', `[Affiliation] Paiement à vérifier — ${demande.prenom} ${demande.nom}`, body);
+};
+
+// 9. Preuve de paiement de renouvellement reçue → à vérifier
+export const sendAdminRenewalProofEmail = async (info: {
+    prenom: string; nom: string; club: string; annee: number; montant: number; transactionRef: string;
+}) => {
+    const body = `
+      <h2 style="color:#0f172a;margin-top:0">Renouvellement de licence à vérifier 🔄</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        ${row('Membre', `${info.prenom} ${info.nom}`)}
+        ${row('Club', info.club)}
+        ${row('Saison', info.annee)}
+        ${row('Montant', `${info.montant.toLocaleString('fr-FR')} FCFA`)}
+        ${row('Référence', info.transactionRef)}
+      </table>
+      ${btn('Vérifier le renouvellement', `${SITE_URL}/admin/renouvellements`)}`;
+    await notifyAdmin('notifyNewMember', `[Licence] Renouvellement à vérifier — ${info.prenom} ${info.nom}`, body);
+};
+
+// 10. Inscription à une compétition
+export const sendAdminCompetitionRegistrationEmail = async (info: {
+    prenom: string; nom: string; club: string; competition: string; competitionId: number; categorie?: string | null;
+}) => {
+    const body = `
+      <h2 style="color:#0f172a;margin-top:0">Nouvelle inscription à une compétition 🏆</h2>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        ${row('Compétition', info.competition)}
+        ${row('Participant', `${info.prenom} ${info.nom}`)}
+        ${row('Club', info.club)}
+        ${info.categorie ? row('Catégorie', info.categorie) : ''}
+      </table>
+      ${btn('Voir les inscrits', `${SITE_URL}/admin/competitions/${info.competitionId}`)}`;
+    await notifyAdmin('notifyCompetitions', `[Compétition] ${info.prenom} ${info.nom} — ${info.competition}`, body);
+};
+
+// 11. Rapport hebdomadaire d'activité
+export const sendAdminWeeklyReportEmail = async (report: {
+    periode: string;
+    nouvellesDemandes: number; affiliationsApprouvees: number; renouvellementsConfirmes: number;
+    inscriptionsCompetitions: number; messagesContact: number;
+    enAttente: { paiements: number; affiliations: number; renouvellements: number; messagesNonLus: number };
+    membresActifs: number; clubsActifs: number;
+}) => {
+    const attente = report.enAttente.paiements + report.enAttente.affiliations
+        + report.enAttente.renouvellements + report.enAttente.messagesNonLus;
+    const body = `
+      <h2 style="color:#0f172a;margin-top:0">Rapport hebdomadaire 📊</h2>
+      <p style="color:#475569">Activité de la plateforme — ${esc(report.periode)}</p>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        ${row('Nouvelles demandes d\'affiliation', report.nouvellesDemandes)}
+        ${row('Affiliations approuvées', report.affiliationsApprouvees)}
+        ${row('Renouvellements confirmés', report.renouvellementsConfirmes)}
+        ${row('Inscriptions aux compétitions', report.inscriptionsCompetitions)}
+        ${row('Messages de contact', report.messagesContact)}
+      </table>
+      <h3 style="color:#0f172a;margin:24px 0 8px">En attente de traitement : ${attente}</h3>
+      <table style="width:100%;border-collapse:collapse;font-size:14px">
+        ${row('Paiements d\'affiliation à vérifier', report.enAttente.paiements)}
+        ${row('Affiliations à valider', report.enAttente.affiliations)}
+        ${row('Renouvellements à confirmer', report.enAttente.renouvellements)}
+        ${row('Messages non lus', report.enAttente.messagesNonLus)}
+      </table>
+      <p style="color:#475569;font-size:14px;margin-top:20px">Licences actives : <strong>${report.membresActifs}</strong> · Clubs actifs : <strong>${report.clubsActifs}</strong></p>
+      ${btn('Ouvrir le tableau de bord', `${SITE_URL}/admin`)}`;
+    await notifyAdmin('notifyNewsletter', `Rapport hebdomadaire ADSS — ${report.periode}`, body);
+};
+
+// ─── Notifications aux membres ────────────────────────────────────────────────
+
+// 12. Renouvellement confirmé
+export const sendRenewalConfirmedEmail = async (to: string, prenom: string, annee: number) => {
+    const body = `
+      <h2 style="color:#0f172a;margin-top:0">Licence ${annee} confirmée ✅</h2>
+      <p style="color:#475569">Bonjour ${esc(prenom)},</p>
+      <p style="color:#475569">Votre paiement a été vérifié : votre licence pour la saison <strong>${annee}</strong> est active.
+         Vous pouvez télécharger votre carte de licence depuis votre espace membre.</p>
+      ${btn('Voir ma licence', `${SITE_URL}/membre/licence`)}`;
+    await transporter.sendMail({ from: FROM, to, subject: `Votre licence ${annee} est active`, html: wrap(body) });
+};
+
+// 13. Renouvellement refusé
+export const sendRenewalRejectedEmail = async (to: string, prenom: string, annee: number, motif?: string | null) => {
+    const body = `
+      <h2 style="color:#0f172a;margin-top:0">Paiement de renouvellement non validé</h2>
+      <p style="color:#475569">Bonjour ${esc(prenom)},</p>
+      <p style="color:#475569">Le paiement envoyé pour votre licence <strong>${annee}</strong> n'a pas pu être validé.</p>
+      ${motif ? `<div style="background:#fff1f2;border-left:4px solid #ef4444;padding:16px;border-radius:0 8px 8px 0;margin:20px 0">
+        <p style="margin:0;color:#991b1b;font-size:14px"><strong>Motif :</strong> ${esc(motif)}</p></div>` : ''}
+      <p style="color:#475569">Vous pouvez relancer le renouvellement depuis votre espace membre, ou nous contacter.</p>
+      ${btn('Relancer mon renouvellement', `${SITE_URL}/membre/licence`)}`;
+    await transporter.sendMail({ from: FROM, to, subject: `Licence ${annee} : paiement non validé`, html: wrap(body) });
 };
