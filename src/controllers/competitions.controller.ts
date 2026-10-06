@@ -13,6 +13,9 @@ import {
     createCompetition,
     updateCompetition,
     deleteCompetition,
+    getResultsAdmin,
+    saveResults,
+    setResultsPublished,
 } from '../services/competitions.service';
 
 const CompetitionSchema = z.object({
@@ -133,5 +136,53 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
         res.json({ message: 'Compétition supprimée' });
     } catch (err: any) {
         res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    }
+};
+
+
+// ── Résultats (admin) ──────────────────────────────────────────────────────────
+
+const ResultsSchema = z.object({
+    resultats: z.array(z.object({
+        memberId: z.number().int().positive(),
+        categorie: z.string().max(100).optional(),
+        classement: z.number().int().min(1, 'Le classement commence à 1').max(999),
+        points: z.number().min(0).max(100000).nullable().optional(),
+    })).max(1000),
+});
+
+const handleError = (res: Response, err: any) => {
+    if (err.name === 'ZodError') {
+        res.status(422).json({ error: err.errors?.[0]?.message ?? 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
+        return;
+    }
+    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+};
+
+export const getResults = async (req: Request, res: Response): Promise<void> => {
+    try {
+        res.json({ data: await getResultsAdmin(parseInt(req.params.id as string)) });
+    } catch (err: any) {
+        handleError(res, err);
+    }
+};
+
+export const putResults = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { resultats } = ResultsSchema.parse(req.body);
+        const data = await saveResults(parseInt(req.params.id as string), resultats);
+        res.json({ data, message: 'Résultats enregistrés' });
+    } catch (err: any) {
+        handleError(res, err);
+    }
+};
+
+export const publishResults = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { publie } = z.object({ publie: z.boolean() }).parse(req.body);
+        const data = await setResultsPublished(parseInt(req.params.id as string), publie);
+        res.json({ data, message: publie ? 'Résultats publiés' : 'Résultats retirés du site' });
+    } catch (err: any) {
+        handleError(res, err);
     }
 };

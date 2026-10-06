@@ -63,9 +63,16 @@ export const getCompetitionPublic = async (id: number) => {
         include: {
             region: { select: { nom: true, code: true } },
             _count: { select: { inscriptions: true } },
+            // Résultats exposés uniquement une fois publiés par l'admin
             resultats: {
-                orderBy: { classement: 'asc' },
-                take: 10,
+                where: { competition: { resultatsPublies: true } },
+                orderBy: [{ categorie: 'asc' }, { classement: 'asc' }],
+                select: {
+                    id: true, categorie: true, classement: true, points: true, medaille: true,
+                    member: {
+                        select: { prenom: true, nom: true, club: { select: { nom: true } } },
+                    },
+                },
             },
         },
     });
@@ -226,6 +233,105 @@ export const deleteCompetition = async (id: number) => {
         include: { _count: { select: { inscriptions: true } } },
     });
     if (!competition) throw { status: 404, message: 'Compétition introuvable', code: 'NOT_FOUND' };
+    // Les inscriptions ne sont pas supprimées en cascade : message clair au lieu d'une erreur 500
+    if (competition._count.inscriptions > 0) {
+        throw {
+            status: 409,
+            message: `Impossible de supprimer : ${competition._count.inscriptions} inscription(s). Dépubliez plutôt la compétition.`,
+            code: 'HAS_INSCRIPTIONS',
+        };
+    }
 
     return prisma.competition.delete({ where: { id } });
+};
+
+// ── Résultats (admin) ──────────────────────────────────────────────────────────
+
+// Médaille déduite du classement (ex aequo possibles, ex. deux bronzes en combat)
+const medailleFor = (classement: number) =>
+    classement === 1 ? 'OR' : classement === 2 ? 'ARGENT' : classement === 3 ? 'BRONZE' : null;
+
+// Données de l'écran de saisie : participants inscrits + résultats existants
+export const getResultsAdmin = async (competitionId: number) => {
+    const competition = await prisma.competition.findUnique({
+        where: { id: competitionId },
+        select: {
+            id: true, titre: true, dateDebut: true, categories: true, resultatsPublies: true,
+            inscriptions: {
+                orderBy: [{ categorie: 'asc' }, { createdAt: 'asc' }],
+                select: {
+                    categorie: true,
+                    member: {
+                        select: { id: true, prenom: true, nom: true, club: { select: { nom: true } } },
+                    },
+                },
+            },
+            resultats: {
+                orderBy: [{ categorie: 'asc' }, { classement: 'asc' }],
+                select: { id: true, memberId: true, categorie: true, classement: true, points: true, medaille: true },
+            },
+        },
+    });
+    if (!competition) throw { status: 404, message: 'Compétition introuvable', code: 'NOT_FOUND' };
+    return competition;
+};
+
+// Remplace l'ensemble des résultats d'une compétition (saisie en tableau)
+export const saveResults = async (
+    competitionId: number,
+    rows: { memberId: number; categorie?: string; classement: number; points?: number | null }[]
+) => {
+    const competition = await prisma.competition.findUnique({
+        where: { id: competitionId },
+        select: { id: true, inscriptions: { select: { memberId: true } } },
+    });
+    if (!competition) throw { status: 404, message: 'Compétition introuvable', code: 'NOT_FOUND' };
+
+    // Seuls les participants inscrits peuvent être classés
+    const inscrits = new Set(competition.inscriptions.map((i) => i.memberId));
+    const notRegistered = rows.filter((r) => !inscrits.has(r.memberId));
+    if (notRegistered.length > 0) {
+        throw { status: 400, message: 'Seuls les participants inscrits à la compétition peuvent être classés', code: 'NOT_REGISTERED' };
+    }
+
+    const seen = new Set<string>();
+    const data = rows.map((r) => {
+        const categorie = (r.categorie ?? '').trim();
+        const key = `${r.memberId}|${categorie.toLowerCase()}`;
+        if (seen.has(key)) {
+            throw { status: 400, message: 'Un participant ne peut être classé qu\'une fois par catégorie', code: 'DUPLICATE_RESULT' };
+        }
+        seen.add(key);
+        return {
+            competitionId,
+            memberId: r.memberId,
+            categorie,
+            classement: r.classement,
+            points: r.points ?? null,
+            medaille: medailleFor(r.classement),
+        };
+    });
+
+    await prisma.$transaction([
+        prisma.resultat.deleteMany({ where: { competitionId } }),
+        prisma.resultat.createMany({ data }),
+    ]);
+
+    return getResultsAdmin(competitionId);
+};
+
+export const setResultsPublished = async (competitionId: number, publie: boolean) => {
+    const competition = await prisma.competition.findUnique({
+        where: { id: competitionId },
+        select: { id: true, _count: { select: { resultats: true } } },
+    });
+    if (!competition) throw { status: 404, message: 'Compétition introuvable', code: 'NOT_FOUND' };
+    if (publie && competition._count.resultats === 0) {
+        throw { status: 400, message: 'Aucun résultat à publier : saisissez d\'abord le classement', code: 'NO_RESULTS' };
+    }
+    return prisma.competition.update({
+        where: { id: competitionId },
+        data: { resultatsPublies: publie },
+        select: { id: true, resultatsPublies: true },
+    });
 };

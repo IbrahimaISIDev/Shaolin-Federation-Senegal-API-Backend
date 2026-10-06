@@ -41,6 +41,9 @@ import {
     create as createCompetition,
     update as updateCompetition,
     remove as removeCompetition,
+    getResults as getCompetitionResults,
+    putResults as putCompetitionResults,
+    publishResults as publishCompetitionResults,
 } from '../controllers/competitions.controller';
 
 // Admin — Stats
@@ -126,6 +129,12 @@ router.get('/competitions/:id', getCompetition);
 router.put('/competitions/:id', updateCompetition);
 // DELETE /api/admin/competitions/:id
 router.delete('/competitions/:id', removeCompetition);
+// GET   /api/admin/competitions/:id/resultats — participants inscrits + résultats
+router.get('/competitions/:id/resultats', getCompetitionResults);
+// PUT   /api/admin/competitions/:id/resultats — remplace le classement complet
+router.put('/competitions/:id/resultats', putCompetitionResults);
+// PATCH /api/admin/competitions/:id/resultats/publication — { publie: boolean }
+router.patch('/competitions/:id/resultats/publication', publishCompetitionResults);
 
 // ── Renouvellements de licence ──────────────────────────────────────────────
 // GET   /api/admin/renewals

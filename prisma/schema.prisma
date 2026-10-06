@@ -112,6 +112,7 @@ model Member {
   licenses            License[]
   inscriptions        Inscription[]
   gradeHistory        GradeHistory[]
+  resultats           Resultat[]
 
   @@index([clubId])
   @@map("members")
@@ -203,21 +204,23 @@ enum PaymentStatus {
 }
 
 model Competition {
-  id           Int           @id @default(autoincrement())
-  titre        String        @db.VarChar(200)
-  description  String?       @db.Text
-  regionId     Int
-  lieu         String?       @db.VarChar(200)
-  dateDebut    DateTime
-  dateFin      DateTime?
-  categories   Json?
-  imageUrl     String?       @db.VarChar(500)
-  isPublished  Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  region       Region        @relation(fields: [regionId], references: [id])
-  inscriptions Inscription[]
-  resultats    Resultat[]
+  id               Int           @id @default(autoincrement())
+  titre            String        @db.VarChar(200)
+  description      String?       @db.Text
+  regionId         Int
+  lieu             String?       @db.VarChar(200)
+  dateDebut        DateTime
+  dateFin          DateTime?
+  categories       Json?
+  imageUrl         String?       @db.VarChar(500)
+  isPublished      Boolean       @default(false)
+  // Résultats visibles publiquement (saisie possible avant publication)
+  resultatsPublies Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  region           Region        @relation(fields: [regionId], references: [id])
+  inscriptions     Inscription[]
+  resultats        Resultat[]
 
   @@index([regionId])
   @@index([dateDebut])
@@ -243,14 +246,18 @@ model Resultat {
   id            Int         @id @default(autoincrement())
   competitionId Int
   memberId      Int
-  categorie     String?     @db.VarChar(100)
-  classement    Int?
+  // Catégorie du classement ("" si la compétition n'a pas de catégories)
+  categorie     String      @default("") @db.VarChar(100)
+  classement    Int
   points        Float?
-  medaille      String?     @db.VarChar(20)
+  medaille      String?     @db.VarChar(20) // OR / ARGENT / BRONZE, déduit du classement
   createdAt     DateTime    @default(now())
-  competition   Competition @relation(fields: [competitionId], references: [id])
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  member        Member      @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
+  @@unique([competitionId, memberId, categorie])
   @@index([competitionId])
+  @@index([memberId])
   @@map("resultats")
 }
 
