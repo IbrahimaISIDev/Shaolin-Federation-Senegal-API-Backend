@@ -9,6 +9,7 @@ import {
   renewMyLicense,
   submitMyRenewalProof,
 } from '../services/members.service';
+import { sendError } from '../utils/http-error';
 
 const UpdateProfileSchema = z.object({
   prenom: z.string().min(1).max(100).optional(),
@@ -25,7 +26,7 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
     const profile = await getMemberProfile(req.user!.userId);
     res.json({ data: profile });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -39,7 +40,7 @@ export const updateMe = async (req: Request, res: Response): Promise<void> => {
       res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
       return;
     }
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -48,7 +49,7 @@ export const getMyPayments = async (req: Request, res: Response): Promise<void> 
     const payments = await getMemberPayments(req.user!.userId);
     res.json({ data: payments });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -57,7 +58,7 @@ export const getMyInscriptions = async (req: Request, res: Response): Promise<vo
     const inscriptions = await getMemberInscriptions(req.user!.userId);
     res.json({ data: inscriptions });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -66,7 +67,7 @@ export const getMyLicense = async (req: Request, res: Response): Promise<void> =
     const license = await getActiveLicense(req.user!.userId);
     res.json({ data: license });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -82,7 +83,7 @@ export const renewLicense = async (req: Request, res: Response): Promise<void> =
       res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
       return;
     }
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -102,6 +103,6 @@ export const submitRenewalProof = async (req: Request, res: Response): Promise<v
       res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
       return;
     }
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };

@@ -13,6 +13,7 @@ import {
     getGradeHistoryAdmin,
 } from '../services/admin.members.service';
 import { generateListPDF } from '../services/pdf.service';
+import { sendError } from '../utils/http-error';
 
 const UpdateMemberSchema = z.object({
     prenom: z.string().min(1).max(100).optional(),
@@ -38,7 +39,7 @@ export const listMembers = async (req: Request, res: Response): Promise<void> =>
         });
         res.json(result);
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -47,7 +48,7 @@ export const getMember = async (req: Request, res: Response): Promise<void> => {
         const member = await getMemberAdmin(parseInt(req.params.id as string));
         res.json({ data: member });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -61,7 +62,7 @@ export const updateMember = async (req: Request, res: Response): Promise<void> =
             res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
             return;
         }
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -70,7 +71,7 @@ export const gradeHistory = async (req: Request, res: Response): Promise<void> =
         const history = await getGradeHistoryAdmin(parseInt(req.params.id as string));
         res.json({ data: history });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -79,7 +80,7 @@ export const deleteMember = async (req: Request, res: Response): Promise<void> =
         await deleteMemberAdmin(parseInt(req.params.id as string));
         res.json({ message: 'Membre supprimé' });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -88,7 +89,7 @@ export const validate = async (req: Request, res: Response): Promise<void> => {
         await validateMember(parseInt(req.params.id as string));
         res.json({ message: 'Membre validé' });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -97,7 +98,7 @@ export const suspend = async (req: Request, res: Response): Promise<void> => {
         await suspendMember(parseInt(req.params.id as string));
         res.json({ message: 'Membre suspendu' });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -139,6 +140,6 @@ export const exportMembersPdf = async (req: Request, res: Response): Promise<voi
         res.setHeader('Content-Disposition', 'attachment; filename="membres.pdf"');
         res.send(pdfBuffer);
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };

@@ -1,6 +1,7 @@
 // ─── CONTROLLER ──────────────────────────────────────────────────────────────
 import { Request, Response } from 'express';
 import { verifyQRCode, getLicenseQRCode, generateLicense } from '../services/licenses.service';
+import { sendError } from '../utils/http-error';
 
 export const verify = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -12,7 +13,7 @@ export const verify = async (req: Request, res: Response): Promise<void> => {
     const result = await verifyQRCode(token);
     res.json({ data: result });
   } catch (err: any) {
-    res.status(500).json({ error: err.message, code: 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -22,7 +23,7 @@ export const getQRCode = async (req: Request, res: Response): Promise<void> => {
     const result = await getLicenseQRCode(parseInt(id as string), req.user!.userId);
     res.json({ data: result });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -32,6 +33,6 @@ export const createLicense = async (req: Request, res: Response): Promise<void> 
     const license = await generateLicense(memberId, annee);
     res.status(201).json({ data: license, message: 'Licence créée' });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };

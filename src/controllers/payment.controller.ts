@@ -14,6 +14,7 @@ import {
 } from '../services/orange-money.service';
 import { sendAffiliationReceivedEmail } from '../services/email.service';
 import { isValidDemandeToken, signDemandeToken } from '../services/affiliation-token';
+import { sendError } from '../utils/http-error';
 
 
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:3000';
@@ -258,6 +259,6 @@ export const checkPaymentStatus = async (req: Request, res: Response): Promise<v
       },
     });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };

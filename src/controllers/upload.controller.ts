@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import multer from 'multer';
 import { uploadMemberPhoto, uploadClubLogo, uploadArticleImage, uploadPaymentProof } from '../services/upload.service';
+import { sendError } from '../utils/http-error';
 
 // ─── Configuration Multer (stockage en mémoire) ───────────────────────────────
 export const upload = multer({
@@ -25,7 +26,7 @@ export const uploadPhoto = async (req: Request, res: Response): Promise<void> =>
     const url = await uploadMemberPhoto(req.file, req.user!.userId);
     res.json({ data: { url }, message: 'Photo mise à jour' });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -39,7 +40,7 @@ export const uploadLogo = async (req: Request, res: Response): Promise<void> => 
     const url = await uploadClubLogo(req.file, parseInt(req.params.id as string));
     res.json({ data: { url }, message: 'Logo mis à jour' });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -53,7 +54,7 @@ export const uploadImage = async (req: Request, res: Response): Promise<void> =>
     const url = await uploadArticleImage(req.file);
     res.json({ data: { url }, message: 'Image uploadée' });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -67,6 +68,6 @@ export const uploadProof = async (req: Request, res: Response): Promise<void> =>
     const url = await uploadPaymentProof(req.file);
     res.json({ data: { url }, message: 'Preuve envoyée' });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };

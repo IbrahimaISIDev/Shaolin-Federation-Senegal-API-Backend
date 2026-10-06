@@ -17,6 +17,7 @@ import {
     saveResults,
     setResultsPublished,
 } from '../services/competitions.service';
+import { sendError } from '../utils/http-error';
 
 const CompetitionSchema = z.object({
     titre: z.string().min(1).max(200),
@@ -46,7 +47,7 @@ export const listPublic = async (req: Request, res: Response): Promise<void> => 
         });
         res.json(result);
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -55,7 +56,7 @@ export const getPublic = async (req: Request, res: Response): Promise<void> => {
         const competition = await getCompetitionPublic(parseInt(req.params.id as string));
         res.json({ data: competition });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -73,7 +74,7 @@ export const inscrire = async (req: Request, res: Response): Promise<void> => {
         );
         res.status(201).json({ data: inscription, message: 'Inscription enregistrée' });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -89,7 +90,7 @@ export const listAdmin = async (req: Request, res: Response): Promise<void> => {
         });
         res.json(result);
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -98,7 +99,7 @@ export const getAdmin = async (req: Request, res: Response): Promise<void> => {
         const competition = await getCompetitionAdmin(parseInt(req.params.id as string));
         res.json({ data: competition });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -112,7 +113,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
             res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
             return;
         }
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -126,7 +127,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
             res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
             return;
         }
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -135,7 +136,7 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
         await deleteCompetition(parseInt(req.params.id as string));
         res.json({ message: 'Compétition supprimée' });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -156,7 +157,7 @@ const handleError = (res: Response, err: any) => {
         res.status(422).json({ error: err.errors?.[0]?.message ?? 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
         return;
     }
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
 };
 
 export const getResults = async (req: Request, res: Response): Promise<void> => {

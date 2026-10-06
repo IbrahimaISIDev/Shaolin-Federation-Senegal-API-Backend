@@ -4,6 +4,7 @@
 // ============================================================
 import { Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
+import { sendError } from '../utils/http-error';
 
 
 export const stats = async (_req: Request, res: Response): Promise<void> => {
@@ -128,7 +129,7 @@ export const stats = async (_req: Request, res: Response): Promise<void> => {
             },
         });
     } catch (err: any) {
-        res.status(500).json({ error: err.message, code: 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -156,6 +157,6 @@ export const notifications = async (_req: Request, res: Response): Promise<void>
             },
         });
     } catch (err: any) {
-        res.status(500).json({ error: err.message, code: 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };

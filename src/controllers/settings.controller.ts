@@ -4,6 +4,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { getSettings, updateSettings } from '../services/settings.service';
+import { sendError } from '../utils/http-error';
 
 const UpdateSettingsSchema = z.object({
     orgName: z.string().min(1).max(200).optional(),
@@ -23,7 +24,7 @@ export const get = async (_req: Request, res: Response): Promise<void> => {
         const settings = await getSettings();
         res.json({ data: settings });
     } catch (err: any) {
-        res.status(500).json({ error: err.message, code: 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -37,6 +38,6 @@ export const update = async (req: Request, res: Response): Promise<void> => {
             res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
             return;
         }
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };

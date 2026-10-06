@@ -8,6 +8,7 @@ import {
     getClubMembers,
     getClubLicenses,
 } from '../services/club.manager.service';
+import { sendError } from '../utils/http-error';
 
 // GET /api/club/me
 export const getMyClub = async (req: Request, res: Response): Promise<void> => {
@@ -15,7 +16,7 @@ export const getMyClub = async (req: Request, res: Response): Promise<void> => {
         const result = await getManagerClub(req.user!.userId);
         res.json({ data: result.club });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -26,7 +27,7 @@ export const getStats = async (req: Request, res: Response): Promise<void> => {
         const stats = await getClubStats(club.id);
         res.json({ data: stats });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -43,7 +44,7 @@ export const getMembers = async (req: Request, res: Response): Promise<void> => 
         });
         res.json(result);
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -59,6 +60,6 @@ export const getLicenses = async (req: Request, res: Response): Promise<void> =>
         });
         res.json(result);
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };

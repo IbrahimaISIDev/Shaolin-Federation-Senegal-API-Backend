@@ -8,6 +8,7 @@ import {
   forgotPasswordService,
   resetPasswordService,
 } from '../services/auth.service';
+import { sendError } from '../utils/http-error';
 
 // ─── Schémas de validation Zod ───────────────────────────────────────────────
 
@@ -49,10 +50,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       });
       return;
     }
-    res.status(err.status || 500).json({
-      error: err.message || 'Erreur serveur',
-      code: err.code || 'SERVER_ERROR',
-    });
+    sendError(res, err);
   }
 };
 
@@ -75,10 +73,7 @@ export const refresh = async (req: Request, res: Response): Promise<void> => {
     });
   } catch (err: any) {
     res.clearCookie('refresh_token');
-    res.status(err.status || 500).json({
-      error: err.message || 'Erreur serveur',
-      code: err.code || 'SERVER_ERROR',
-    });
+    sendError(res, err);
   }
 };
 
@@ -133,7 +128,7 @@ export const resetPassword = async (req: Request, res: Response): Promise<void> 
       res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
       return;
     }
-    res.status(err.status || 500).json({ error: err.message || 'Erreur serveur', code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -148,6 +143,6 @@ export const changePassword = async (req: Request, res: Response): Promise<void>
       res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
       return;
     }
-    res.status(err.status || 500).json({ error: err.message || 'Erreur serveur', code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };

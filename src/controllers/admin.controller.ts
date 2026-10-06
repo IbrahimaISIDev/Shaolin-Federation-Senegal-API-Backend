@@ -4,6 +4,7 @@ import {
   listClubsAdmin, createClub, updateClub,
   toggleClubStatus, deleteClub,
 } from '../services/admin.service';
+import { sendError } from '../utils/http-error';
 
 // Coordonnées limitées au Sénégal (avec marge) : attrape notamment
 // l'inversion latitude/longitude. null = effacer la position.
@@ -51,7 +52,7 @@ export const listClubs = async (req: Request, res: Response): Promise<void> => {
     });
     res.json(result);
   } catch (err: any) {
-    res.status(500).json({ error: err.message, code: 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -65,7 +66,7 @@ export const create = async (req: Request, res: Response): Promise<void> => {
       res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
       return;
     }
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -79,7 +80,7 @@ export const update = async (req: Request, res: Response): Promise<void> => {
       res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
       return;
     }
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -88,7 +89,7 @@ export const activate = async (req: Request, res: Response): Promise<void> => {
     const club = await toggleClubStatus(parseInt(req.params.id as string), true);
     res.json({ data: club, message: 'Club activé' });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -97,7 +98,7 @@ export const deactivate = async (req: Request, res: Response): Promise<void> => 
     const club = await toggleClubStatus(parseInt(req.params.id as string), false);
     res.json({ data: club, message: 'Club désactivé' });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -106,6 +107,6 @@ export const remove = async (req: Request, res: Response): Promise<void> => {
     await deleteClub(parseInt(req.params.id as string));
     res.json({ message: 'Club supprimé' });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };

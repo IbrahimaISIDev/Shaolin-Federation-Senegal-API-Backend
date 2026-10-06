@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as affiliationService from '../services/affiliation.service';
 import { generateListPDF } from '../services/pdf.service';
 import { signDemandeToken } from '../services/affiliation-token';
+import { sendError } from '../utils/http-error';
 
 // Réponse publique de soumission : le strict nécessaire pour enchaîner sur le
 // paiement, plus le jeton d'accès du candidat à sa demande.
@@ -18,7 +19,7 @@ export const submitClub = async (req: Request, res: Response) => {
     const demande = await affiliationService.submitClubAffiliation(req.body);
     res.status(201).json({ success: true, data: publicSubmission(demande), message: 'Demande d\'affiliation club soumise avec succès' });
   } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -27,7 +28,7 @@ export const submitMaitre = async (req: Request, res: Response) => {
     const demande = await affiliationService.submitMaitreAffiliation(req.body);
     res.status(201).json({ success: true, data: publicSubmission(demande), message: 'Demande d\'affiliation maître soumise avec succès' });
   } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -36,7 +37,7 @@ export const submitMembre = async (req: Request, res: Response) => {
     const demande = await affiliationService.submitMembreAffiliation(req.body);
     res.status(201).json({ success: true, data: publicSubmission(demande), message: 'Demande d\'affiliation membre soumise avec succès' });
   } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -56,7 +57,7 @@ export const listAffiliations = async (req: Request, res: Response) => {
     });
     res.json({ success: true, ...result });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -101,7 +102,7 @@ export const exportAffiliationsPdf = async (req: Request, res: Response) => {
     res.setHeader('Content-Disposition', 'attachment; filename="affiliations.pdf"');
     res.send(pdfBuffer);
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -112,7 +113,7 @@ export const getAffiliation = async (req: Request, res: Response) => {
     if (!demande) return res.status(404).json({ success: false, message: 'Demande introuvable' });
     res.json({ success: true, data: demande });
   } catch (err: any) {
-    res.status(500).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -124,7 +125,7 @@ export const approve = async (req: Request, res: Response) => {
     const updated = await affiliationService.approveAffiliation(id, adminId, adminNote);
     res.json({ success: true, data: updated, message: 'Demande approuvée' });
   } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -137,7 +138,7 @@ export const reject = async (req: Request, res: Response) => {
     const updated = await affiliationService.rejectAffiliation(id, adminId, motifRejet);
     res.json({ success: true, data: updated, message: 'Demande rejetée' });
   } catch (err: any) {
-    res.status(400).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -151,7 +152,7 @@ export const submitPaymentProof = async (req: Request, res: Response) => {
     await affiliationService.submitPaymentProof(id, token, { referenceManuelle, preuvePaiementUrl });
     res.json({ success: true, message: 'Preuve de paiement envoyée' });
   } catch (err: any) {
-    res.status(err.status || 400).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };
 
@@ -162,6 +163,6 @@ export const confirmPayment = async (req: Request, res: Response) => {
     const updated = await affiliationService.confirmAffiliationPayment(id, adminId);
     res.json({ success: true, data: updated, message: 'Paiement confirmé' });
   } catch (err: any) {
-    res.status(err.status || 400).json({ success: false, message: err.message });
+    sendError(res, err);
   }
 };

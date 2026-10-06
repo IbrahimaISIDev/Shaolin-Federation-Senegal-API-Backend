@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import multer from 'multer';
 import { importClubsFromExcel, importMembersFromExcel } from '../services/import.service';
+import { sendError } from '../utils/http-error';
 
 // ─── Configuration Multer (fichiers Excel, en mémoire) ────────────────────────
 export const uploadExcel = multer({
@@ -34,7 +35,7 @@ export const importClubs = async (req: Request, res: Response): Promise<void> =>
     const report = await importClubsFromExcel(req.file.buffer);
     res.json({ data: report, message: `${report.created} club(s) importé(s) sur ${report.total}` });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -47,6 +48,6 @@ export const importMembers = async (req: Request, res: Response): Promise<void> 
     const report = await importMembersFromExcel(req.file.buffer);
     res.json({ data: report, message: `${report.created} membre(s) importé(s) sur ${report.total}` });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };

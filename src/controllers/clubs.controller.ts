@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { getClubs, getClubById, getClubsForMap, searchClubs } from '../services/clubs.service';
+import { sendError } from '../utils/http-error';
 
 export const listClubs = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -12,7 +13,7 @@ export const listClubs = async (req: Request, res: Response): Promise<void> => {
     });
     res.json(result);
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -21,7 +22,7 @@ export const getClub = async (req: Request, res: Response): Promise<void> => {
     const club = await getClubById(parseInt(req.params.id as string));
     res.json({ data: club });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -31,7 +32,7 @@ export const mapClubs = async (req: Request, res: Response): Promise<void> => {
     const clubs = await getClubsForMap(region, parseInt(limit));
     res.json({ data: clubs, total: clubs.length });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };
 
@@ -45,6 +46,6 @@ export const searchMap = async (req: Request, res: Response): Promise<void> => {
     const results = await searchClubs(q);
     res.json({ data: results });
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 };

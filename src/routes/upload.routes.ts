@@ -4,6 +4,7 @@ import { publicSubmissionLimiter } from '../middlewares/rate-limit.middleware';
 import { upload, uploadPhoto, uploadLogo, uploadImage, uploadProof } from '../controllers/upload.controller';
 import { Request, Response } from 'express';
 import { generateLicensePDF } from '../services/pdf.service';
+import { sendError } from '../utils/http-error';
 
 const router = Router();
 
@@ -48,7 +49,7 @@ router.get('/licenses/:id/pdf', requireAuth, async (req: Request, res: Response)
     // Redirection vers le PDF Cloudinary
     res.redirect(pdfUrl);
   } catch (err: any) {
-    res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+    sendError(res, err);
   }
 });
 

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { sendContactNotificationEmail } from '../services/email.service';
+import { sendError } from '../utils/http-error';
 
 
 const ContactSchema = z.object({
@@ -24,6 +25,6 @@ export const sendContact = async (req: Request, res: Response): Promise<void> =>
             res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
             return;
         }
-        res.status(500).json({ error: err.message, code: 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };

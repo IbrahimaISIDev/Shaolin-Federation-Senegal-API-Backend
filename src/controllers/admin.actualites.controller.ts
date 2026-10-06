@@ -11,6 +11,7 @@ import {
     togglePublishActualite,
     deleteActualite,
 } from '../services/admin.actualites.service';
+import { sendError } from '../utils/http-error';
 
 const ArticleSchema = z.object({
     titre: z.string().min(1).max(255),
@@ -33,7 +34,7 @@ export const listArticles = async (req: Request, res: Response): Promise<void> =
         });
         res.json(result);
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -42,7 +43,7 @@ export const getArticle = async (req: Request, res: Response): Promise<void> => 
         const article = await getActualiteAdmin(parseInt(req.params.id as string));
         res.json({ data: article });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -56,7 +57,7 @@ export const createArticle = async (req: Request, res: Response): Promise<void> 
             res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
             return;
         }
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -70,7 +71,7 @@ export const updateArticle = async (req: Request, res: Response): Promise<void> 
             res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
             return;
         }
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -79,7 +80,7 @@ export const publishArticle = async (req: Request, res: Response): Promise<void>
         const article = await togglePublishActualite(parseInt(req.params.id as string), true);
         res.json({ data: article, message: 'Article publié' });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -88,7 +89,7 @@ export const unpublishArticle = async (req: Request, res: Response): Promise<voi
         const article = await togglePublishActualite(parseInt(req.params.id as string), false);
         res.json({ data: article, message: 'Article dépublié' });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
 
@@ -97,6 +98,6 @@ export const deleteArticle = async (req: Request, res: Response): Promise<void> 
         await deleteActualite(parseInt(req.params.id as string));
         res.json({ message: 'Article supprimé' });
     } catch (err: any) {
-        res.status(err.status || 500).json({ error: err.message, code: err.code || 'SERVER_ERROR' });
+        sendError(res, err);
     }
 };
