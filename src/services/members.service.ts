@@ -123,3 +123,68 @@ export const submitMyRenewalProof = async (
   if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
   return submitRenewalProof(licenseId, member.id, data);
 };
+// ─── Parcours du pratiquant ───────────────────────────────────────────────────
+// Vue d'ensemble pour l'espace membre : grades obtenus, licences par saison,
+// compétitions disputées avec les résultats publiés, bilan des médailles.
+export const getMemberJourney = async (userId: number) => {
+  const member = await prisma.member.findUnique({
+    where: { userId },
+    select: {
+      id: true, prenom: true, nom: true, grade: true, discipline: true, photoUrl: true, createdAt: true,
+      club: { select: { id: true, nom: true, region: { select: { nom: true } } } },
+      gradeHistory: {
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, ancienGrade: true, nouveauGrade: true, notes: true, createdAt: true },
+      },
+      licenses: {
+        orderBy: { annee: 'desc' },
+        select: { id: true, annee: true, status: true, dateDebut: true, dateFin: true },
+      },
+      inscriptions: {
+        orderBy: { competition: { dateDebut: 'desc' } },
+        select: {
+          id: true, categorie: true, createdAt: true,
+          competition: {
+            select: {
+              id: true, titre: true, lieu: true, dateDebut: true, dateFin: true, resultatsPublies: true,
+              region: { select: { nom: true } },
+            },
+          },
+        },
+      },
+      // Résultats visibles seulement une fois publiés par l'admin
+      resultats: {
+        where: { competition: { resultatsPublies: true } },
+        select: { competitionId: true, categorie: true, classement: true, medaille: true, points: true },
+      },
+    },
+  });
+  if (!member) throw { status: 404, message: 'Membre introuvable', code: 'NOT_FOUND' };
+
+  const { resultats, inscriptions, ...rest } = member;
+  const now = new Date();
+
+  const competitions = inscriptions.map((ins) => ({
+    ...ins,
+    resultats: resultats.filter((r) => r.competitionId === ins.competition.id),
+    aVenir: ins.competition.dateDebut > now,
+  }));
+
+  const medailles = {
+    or: resultats.filter((r) => r.medaille === 'OR').length,
+    argent: resultats.filter((r) => r.medaille === 'ARGENT').length,
+    bronze: resultats.filter((r) => r.medaille === 'BRONZE').length,
+  };
+
+  return {
+    ...rest,
+    competitions,
+    bilan: {
+      competitionsDisputees: competitions.filter((c) => !c.aVenir).length,
+      competitionsAVenir: competitions.filter((c) => c.aVenir).length,
+      medailles,
+      saisonsLicenciees: new Set(rest.licenses.filter((l) => l.status !== 'PENDING').map((l) => l.annee)).size,
+      passagesDeGrade: rest.gradeHistory.length,
+    },
+  };
+};

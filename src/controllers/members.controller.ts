@@ -8,6 +8,7 @@ import {
   getActiveLicense,
   renewMyLicense,
   submitMyRenewalProof,
+  getMemberJourney,
 } from '../services/members.service';
 import { sendError } from '../utils/http-error';
 
@@ -103,6 +104,14 @@ export const submitRenewalProof = async (req: Request, res: Response): Promise<v
       res.status(422).json({ error: 'Données invalides', code: 'VALIDATION_ERROR', details: err.errors });
       return;
     }
+    sendError(res, err);
+  }
+};
+// GET /api/members/me/parcours — parcours du pratiquant
+export const getMyJourney = async (req: Request, res: Response): Promise<void> => {
+  try {
+    res.json({ data: await getMemberJourney(req.user!.userId) });
+  } catch (err) {
     sendError(res, err);
   }
 };

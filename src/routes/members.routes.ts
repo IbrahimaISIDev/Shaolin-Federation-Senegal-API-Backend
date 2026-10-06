@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth, requireRole } from '../middlewares/auth.middleware';
 import {
   getMe, updateMe, getMyPayments, getMyLicense, getMyInscriptions,
-  renewLicense, submitRenewalProof,
+  renewLicense, submitRenewalProof, getMyJourney,
 } from '../controllers/members.controller';
 
 const router = Router();
@@ -24,6 +24,9 @@ router.post('/me/license/renew', renewLicense);
 
 // PATCH /api/members/me/license/:licenseId/payment-proof
 router.patch('/me/license/:licenseId/payment-proof', submitRenewalProof);
+
+// GET  /api/members/me/parcours — grades, licences, compétitions, résultats
+router.get('/me/parcours', getMyJourney);
 
 // GET  /api/members/me/payments
 router.get('/me/payments', getMyPayments);
